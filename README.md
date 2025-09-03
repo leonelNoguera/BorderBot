@@ -17,7 +17,7 @@ Usted debe ser cauteloso con esta herramienta o con cualquier otra.
 ## Instalación
 1. 
 ``` 
-git clone https://github.com/leoNoguera/borderbot.git
+git clone https://github.com/leonelNoguera/BorderBot.git
 ```
  2. instalar mariadb y BeautifulSoup
  3. configurar mariadb y añadir una base de datos llamada "borderbotdb"
