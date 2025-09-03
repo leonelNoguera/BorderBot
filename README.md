@@ -1,6 +1,6 @@
 # BorderBot
 
- - Bot de trading de criptomonedas.
+ - Bot de simulación de trading de criptomonedas.
  - Atento a los precios así como un border collie vigilando ovejas.
 
 ## Descargo de responsabilidad
@@ -10,6 +10,38 @@ Lo presentado en este proyecto no es recomendación de inversión.
 Solamente comparto una herramienta de trading.
 Usted debe ser cauteloso con esta herramienta o con cualquier otra.
 
+## Explicación de "borderbot.py" y "client.py"
+
+Cuando simula trading en tiempo real ("borderbot.py") o hace backtesting ("client.py").
+El bot selecciona la estrategia que supuestamente está teniendo mejor profit o menor loss (la variable "pl").
+
+La fee se calcula en base a una fee mínima más un promedio y dando cierta prioridad a la volatilidad más reciente.
+
+## Explicación de la estrategia BorderStrategy
+
+El bot genera estrategias con configuraciones aleatorias.
+
+Cada estrategia que se llama 'bs, ...', es del tipo BorderStrategy.
+Por el momento es la única estrategia que hay en el bot.
+
+Esta estrategia no tiene un take profit normal, sino que el stop loss se va ajustando a medida que pasa el tiempo y conforme a determinadas variables.
+La idea es que el riesgo se reduzca con el tiempo y que (si sale bien) el stop loss esté cada vez mejor posicionado para dar mayor ganancia o menor pérdida.
+
+La estrategia aumenta el apalancamiento de los longs a medida que los últimos longs tuvieron profit, así también con los shorts.
+En caso contrario, lo disminuye.
+
+Cada estrategia comienza con un short por defecto.
+
+El stop loss estará por encima del precio de entrada, basado en la variable "sl_initial_dif".
+A medida que el precio baje, el stop loss se modificara para estar al menor_precio_del_trade * (1 + "sl_initial_dif")
+
+Si el stop loss llega a estar por debajo del stop_loss_inicial + "sl_reduced_dif", en vez de ajustarse por "sl_initial_dif", se ajustará por "sl_dif".
+
+La variable "zoom" aumenta con los trades exitosos y disminuye en caso contrario. Similar a como sucede con el apalancamiento.
+
+La variable "m_aprox" junto con el "zoom" actual disminuye la diferencia (sea de "sl_initial_dif" o de "sl_dif").
+Esto es para que el riesgo se disminuya rápidamente cuando se está operando con apalancamiento.
+
 ## Prerrequisitos
   - Los paquetes de BeautifulSoup y mariadb para Python 3.
   - Base de datos mariadb, obviamente.
@@ -17,7 +49,7 @@ Usted debe ser cauteloso con esta herramienta o con cualquier otra.
 ## Instalación
 1. 
 ``` 
-git clone https://github.com/leonelNoguera/BorderBot.git
+git clone https://github.com/leoNoguera/borderbot.git
 ```
  2. instalar mariadb y BeautifulSoup
  3. configurar mariadb y añadir una base de datos llamada "borderbotdb"
@@ -123,6 +155,7 @@ Para almacenar los precios de un par de activos en archivos y además simular tr
 python3 borderbot.py DRIFT-USDT 1 start
 ```
 
+
 ## prices_updater.py
 
 Para almacenar los precios de un par de activos desde los archivos (listados en 'prices/DRIFT-USDT_prices_lists.txt') hacia la base de datos:
@@ -156,7 +189,7 @@ Los parámetros son: par 1 host puerto
 ## donaciones
 
 Disculpe las molestias y la demora.
-Faltan muchas modificaciones en el proyecto y también una explicación clara de la estrategia y del bot en general.
+Faltan muchas modificaciones en el proyecto y también una explicación más clara de la estrategia y del bot en general.
 
 Pero si lo desea puede hacer una donación opcional, voluntaria y libre:
 
