@@ -163,6 +163,24 @@ Para almacenar los precios de un par de activos desde los archivos (listados en 
 python3 prices_updater.py DRIFT-USDT
 ```
 
+Los precios se almacenan como en el ejemplo siguiente:
+
+El "timer" de "config.json" es de 10 (segundos).
+Al ejecutar "borderbot.py" en tiempo real, lee el precio cada 10 segundos (y un poquito más).
+Los precios quedarían así:
+
+timestamp, precio
+1756436299.757182,0.632413
+1756436310.132175,0.632569
+
+Luego "prices_updater.py" lee los precios del obtenidos y calcula los precios aproximados para el timer seleccionado.
+Quedaría de la siguiente manera:
+
+timestamp, precio
+1756436300.0,0.632417
+1756436310.0,0.632567
+
+
 ## control_panel.py
 
 Abrir un menú para seleccionar cuales precios o cuales estrategias eliminar de la base de datos:
