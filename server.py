@@ -19,7 +19,6 @@ def threaded_client(connection):
     connection.send(str.encode(json.JSONEncoder().encode({'msg' : 'Connected.'})))
     values = None
     data = None
-    data_concat = ''
     connected = True
     f = open('config.json', 'r')
     config_list = list(json.JSONEncoder().encode(json.JSONDecoder().decode(f.read())))
@@ -112,13 +111,13 @@ def threaded_client(connection):
                     connection.send(str.encode(reply))
                 if (data['sub-type'] == 'update_strategy'):
                     comp = None
-                    data_concat += data['data']
-                    if (data['data']):
-                        data_concat += data['split_text']
+                    if (not data['ready']):
+                        if (not values):
+                            values = ''
+                        values += data['data']
                     else:
-                        data_concat = data_concat[:-(len(data['split_text']))]
-                        comp = bot.db.update_strategy(None, 'backtesting', data_concat, data['timer'], data['coin1'], data['coin2'], update_comp = data['update_comp'])
-                        data_concat = ''
+                        comp = bot.db.update_strategy(None, 'backtesting', values, data['timer'], data['coin1'], data['coin2'], update_comp = data['update_comp'])
+                        values = None
                     reply = json.JSONEncoder().encode({'reply' : 'update_strategy', 'comp' : comp})
                     connection.send(str.encode(reply))
         else:

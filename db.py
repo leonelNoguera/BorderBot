@@ -657,16 +657,20 @@ class Db(object):
 							comp = {'comp_initial_config' : comp_initial_config, 'comp_last_timestamp' : comp_last_timestamp, 'comp_prev_pl' : comp_prev_pl}
 				return comp
 			else:
-				# Pendiente modificar esta desprolijidad, entre otras.
-				split_text = '_config'
-				statement = statement.split(split_text)
-				for s in statement:
-					self.socket.send(json.JSONEncoder().encode({'type' : 'SQL', 'sub-type' : 'update_strategy', 'data' : s, 'timer' : v.timer, 'coin1' : v.coin1, 'coin2' : v.coin2, 'update_comp' : update_comp, 'split_text' : split_text}).encode())
+				r = None
+				st = ''
+				while (len(statement)):
+					statement = list(statement)
+					st = ''
+					while ((len(st) <= 1000) and len(statement)):
+						st += statement.pop(0)
+					self.socket.send(json.JSONEncoder().encode({'type' : 'SQL', 'sub-type' : 'update_strategy', 'data' : st, 'timer' : v.timer, 'coin1' : v.coin1, 'coin2' : v.coin2, 'ready' : False}).encode())
 					self.socket.recv(5000)
-				self.socket.send(json.JSONEncoder().encode({'type' : 'SQL', 'sub-type' : 'update_strategy', 'data' : '', 'timer' : v.timer, 'coin1' : v.coin1, 'coin2' : v.coin2, 'update_comp' : update_comp, 'split_text' : split_text}).encode())
 
-				msg_in = json.JSONDecoder().decode(self.socket.recv(5000).decode())
-				if (msg_in['reply'] == 'update_strategy'):
+				self.socket.send(json.JSONEncoder().encode({'type' : 'SQL', 'sub-type' : 'update_strategy', 'timer' : v.timer, 'coin1' : v.coin1, 'coin2' : v.coin2, 'update_comp' : update_comp, 'ready' : True}).encode())
+				r = self.socket.recv(5000).decode()
+				if (not st):
+					msg_in = json.JSONDecoder().decode(r)
 					return msg_in['comp']
 		else:
 			if (v):
