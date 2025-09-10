@@ -12,7 +12,7 @@ class PricesUpdater(object):
 		self.decimals = config[self.coin1 + '-' + self.coin2]['decimals']
 		self.timer = config['timer']
 		print('Conectando a la db.')
-		self.conn = mariadb.connect(user="youruser", password="yourpassword", host="127.0.0.1", port=portnumber, database="borderbotdb")
+		self.conn = mariadb.connect(user=config['db_user'], password=config['db_password'], host=config['db_host'], port=config['db_port'], database=config['db_database'])
 		self.cur = self.conn.cursor()
 	def save_prices(self, files, read_timestamp = False):
 		last = ''

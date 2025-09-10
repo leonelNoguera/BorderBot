@@ -68,6 +68,12 @@ git clone https://github.com/leoNoguera/borderbot.git
 Configuración de ejemplo:
 ```
 {
+	"db_user" : "user",
+	"db_password" : "password",
+	"db_host" : "host",
+	"db_port" : 3306,
+	"db_database" : "borderbotdb",
+		-> Son los datos necesatios para conectarse a la db
 	"pair" : "DRIFT-USDT", -> Par de activos por defecto
 	"simulate_trading" : true, -> Simular trading en tiempo real o sólamente guardar precios
 	"price_source" : "jupiter", -> De dónde se obtendrán los precios (por ahora sólamente admite la API gratuita de Jupiter)
@@ -139,8 +145,6 @@ Configuración de ejemplo:
 	}
 }
 ```
-
-Recuerde también cololar los datos correspondientes a su base de datos en 'db.py' y en 'prices-updater.py', donde dice 'self.conn = mariadb.connect ...'
 
 
 ## borderbot.py

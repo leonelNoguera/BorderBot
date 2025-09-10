@@ -327,7 +327,9 @@ class BorderBot(object):
             omit = False
             first_timestamp_in_list = None
             if (self.simulate_trading):
+                trader_log_file_path = 'logs/' + self.coin1 + '-' + self.coin2 + '_' + str(self.timer) + '_' + datetime.now().isoformat() + '.txt'
                 while (True):
+                    txt = ''
                     prev_omitted = False
                     if (omit):
                         prev_omitted = True
@@ -385,7 +387,10 @@ class BorderBot(object):
                                 m = self
                             )
                             if (new_strategy and (new_strategy.initial_config != self.strategy.initial_config)): # Nuevo trader.
-                                print(datetime.fromtimestamp(self.values[j]['time']).isoformat() + ' cambio de estrategia')
+                                t = datetime.fromtimestamp(self.values[j]['time']).isoformat() + ' cambio de estrategia'
+                                txt += t + '\n'
+                                print(t)
+
                                 self.new_trader = True
                                 self.strategy = new_strategy
                         if (self.strategy):
@@ -403,22 +408,29 @@ class BorderBot(object):
                                         leverage_l = int(self.strategy.leverage_l)
 
                                     self.change_trade(leverage_s, leverage_l, zoom_s, zoom_l, j)
-
-                                    print('\n\tSiguiendo a la estrategia: ' + self.strategy.NAME + ', ' + self.strategy.trade['type'] + ', ' + str(datetime.fromtimestamp(self.values[j]['time']).isoformat()) + ', ' + str(self.values[j]['price']))
+                                    t = '\n\tSiguiendo a la estrategia: ' + self.strategy.NAME + ', ' + self.strategy.trade['type'] + ', ' + str(datetime.fromtimestamp(self.values[j]['time']).isoformat()) + ', ' + str(self.values[j]['price'])
+                                    txt += t + '\n'
+                                    print(t)
 
                                     for d in self.strategy.derivatives:
-                                        print('\tstrategy derivatives, zoom ' + str(d['min_zoom']['c']) + ' ' + str(d['min_zoom']['n']) + ': ' + str(d['coin2_balance']) + ' USD, investment: ' + str(d['total_investment']))
+                                        t = '\tstrategy derivatives, zoom ' + str(d['min_zoom']['c']) + ' ' + str(d['min_zoom']['n']) + ': ' + str(d['coin2_balance']) + ' USD, investment: ' + str(d['total_investment'])
+                                        txt += t + '\n'
+                                        print(t)
                                     for d in self.derivatives:
-                                        print('\ttrader derivatives, zoom ' + str(d['min_zoom']['c']) + ' ' + str(d['min_zoom']['n']) + ': ' + str(d['coin2_balance']) + ' USD, investment: ' + str(d['total_investment']))
+                                        t = '\ttrader derivatives, zoom ' + str(d['min_zoom']['c']) + ' ' + str(d['min_zoom']['n']) + ': ' + str(d['coin2_balance']) + ' USD, investment: ' + str(d['total_investment'])
+                                        txt += t + '\n'
+                                        print(t)
 
-                                    print('\tleverage_s: ' + str(leverage_s))
-                                    print('\tleverage_l: ' + str(leverage_l))
-                                    print('\tzoom_s: ' + str(self.strategy.zoom_s))
-                                    print('\tzoom_l: ' + str(self.strategy.zoom_l))
-                                    print('\tfee short: ' + str(self.fee_short) + '\n\tfee long: ' + str(self.fee_long))
-                                    print('\tleverage_l_ok: ' + str(self.strategy.l_l_ok) + ', leverage_l_no: ' + str(self.strategy.l_l_no))
-                                    print('\tleverage_s_ok: ' + str(self.strategy.l_s_ok) + ', leverage_s_no: ' + str(self.strategy.l_s_no))
+                                    t = '\tleverage_s: ' + str(leverage_s) + '\n'
+                                    t += '\tleverage_l: ' + str(leverage_l) + '\n'
+                                    t += '\tzoom_s: ' + str(self.strategy.zoom_s) + '\n'
+                                    t += '\tzoom_l: ' + str(self.strategy.zoom_l) + '\n'
+                                    t += '\tfee short: ' + str(self.fee_short) + '\n\tfee long: ' + str(self.fee_long) + '\n'
+                                    t += '\tleverage_l_ok: ' + str(self.strategy.l_l_ok) + ', leverage_l_no: ' + str(self.strategy.l_l_no) + '\n'
+                                    t += '\tleverage_s_ok: ' + str(self.strategy.l_s_ok) + ', leverage_s_no: ' + str(self.strategy.l_s_no) + '\n'
 
+                                    txt += t + '\n'
+                                    print(t)
 
                                     prev_status = {}
                                     try:
@@ -432,6 +444,11 @@ class BorderBot(object):
                                     f.write(json.JSONEncoder().encode(prev_status))
                                     f.close()
                     self.db.update_trader(self, self.mode)
+
+                    f = open(trader_log_file_path, 'a')
+                    f.write(txt)
+                    f.close()
+
                     time.sleep(self.timer)
             else:
                 print('Obteniendo precios...')

@@ -17,7 +17,7 @@ class Db(object):
 		self.socket = socket
 		if (self.mode != 'backtesting'):
 			print('Conectando a la db.')
-			self.conn = mariadb.connect(user="youruser", password="yourpassword", host="127.0.0.1", port=portnumber, database="borderbotdb")
+			self.conn = mariadb.connect(user=config['db_user'], password=config['db_password'], host=config['db_host'], port=config['db_port'], database=config['db_database'])
 			self.cur = self.conn.cursor()
 		self.init_timestamp = 0
 		self.last_price_in_list = None

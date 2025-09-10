@@ -1,4 +1,9 @@
 {
+	"db_user" : "user",
+	"db_password" : "password",
+	"db_host" : "host",
+	"db_port" : 3306,
+	"db_database" : "borderbotdb",
 	"pair" : "DRIFT-USDT",
 	"simulate_trading" : true,
 	"price_source" : "jupiter",
