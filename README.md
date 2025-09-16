@@ -159,6 +159,16 @@ Para almacenar los precios de un par de activos en archivos y además simular tr
 python3 borderbot.py DRIFT-USDT 1 start
 ```
 
+Usted verá que al ejecutar 'borderbot.py' o client.py' verá lineas con algo similar a:
+
+strategy derivatives, long, far_price_dif ...
+strategy derivatives, long, zoom >= ...
+
+Estas son variantes de la estrategia que se está usando en ese momento.
+Se utilizan las variables 'far_price_dif' o 'zoom' para indicar el momento de apertura del long o del short de la estrategia.
+Pero el momento de cierre del trade aun es el mismo que en la estrategia original.
+Esta funcionalidad aun puede tener bugs.
+
 
 ## prices_updater.py
 

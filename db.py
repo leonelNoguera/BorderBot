@@ -325,8 +325,22 @@ class Db(object):
 	def get_next_strategy_to_test(self, coin1, coin2, timer, config2, m):
 		v = None
 		if (self.mode == 'backtesting'):
-			self.socket.send(json.JSONEncoder().encode({'type' : 'SQL', 'sub-type' : 'get_next_strategy_to_test'}).encode())
-			msg_in = json.JSONDecoder().decode(self.socket.recv(5000).decode())
+			self.socket.send(json.JSONEncoder().encode({'type' : 'SQL', 'sub-type' : 'get_next_strategy_to_test', 'first_reply' : True}).encode())
+			partial_msg_in = self.socket.recv(5000).decode()
+			msg_in = partial_msg_in
+			try:
+				msg_in = json.JSONDecoder().decode(msg_in)
+			except:
+				pass
+			while (type(msg_in) == type('')):
+				self.socket.send(json.JSONEncoder().encode({'type' : 'SQL', 'sub-type' : 'get_next_strategy_to_test', 'first_reply' : False}).encode())
+				partial_msg_in = self.socket.recv(5000).decode()
+				msg_in += partial_msg_in
+
+				try:
+					msg_in = json.JSONDecoder().decode(msg_in)
+				except:
+					pass
 			msg_in['initial_config'] = json.JSONDecoder().decode(msg_in['initial_config'])
 
 			v = strategy.Strategy(self, timer, coin1, coin2, config = config2, name = 'bs,' + str(msg_in['initial_config']['sl_s_dif']) + ',' + str(msg_in['initial_config']['m_aprox']) + ',asl', mode = self.mode, socket = self.socket, save = False)
@@ -624,8 +638,17 @@ class Db(object):
 				cur.execute(st)
 				self.conn.commit()
 			else:
-				self.socket.send(json.JSONEncoder().encode({'type' : 'SQL', 'sub-type' : 'save_strategy', 'data' : statement}).encode())
-				self.socket.recv(5000).decode()
+				r = None
+				st2 = ''
+				while (len(statement)):
+					statement = list(statement)
+					st2 = ''
+					while ((len(st2) <= 1000) and len(statement)):
+						st2 += statement.pop(0)
+					self.socket.send(json.JSONEncoder().encode({'type' : 'SQL', 'sub-type' : 'save_strategy', 'data' : st2, 'ready' : False}).encode())
+					self.socket.recv(5000)
+				self.socket.send(json.JSONEncoder().encode({'type' : 'SQL', 'sub-type' : 'save_strategy', 'ready' : True}).encode())
+				r = self.socket.recv(5000).decode()
 		else:
 			cur = self.conn.cursor()
 			cur.execute(statement)
