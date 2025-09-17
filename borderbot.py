@@ -207,15 +207,14 @@ class BorderBot(object):
                     n = d['min_zoom']['n']
                     if (d['position'] != 'close'):# El short/long anterior estaba abierto.
                         if (((c == '>') and (zoom > n)) or ((c == '>=') and (zoom >= n))): # Hay zoom para el short/long.
-                            d['coin2_balance'] = d['coin2_balance'] * (1 + leverage_dif) * (1 - (fee * 0.5 * int(leverage)))
+                            d['coin2_balance'] = d['coin2_balance'] * (1 + leverage_dif) * (1 - (fee2 * 0.5 * int(leverage)))
                             d['position'] = trade_type
                         else:
                             d['coin2_balance'] = d['coin2_balance'] * (1 + leverage_dif)
                             d['position'] = 'close'
                     else:
-                        #print('El short/long anterior estaba cerrado.')
                         if (((c == '>') and (zoom > n)) or ((c == '>=') and (zoom >= n))):
-                            d['coin2_balance'] = d['coin2_balance'] * (1 - (fee2 * 0.5 * int(leverage2)))
+                            d['coin2_balance'] = d['coin2_balance'] * (1 - (fee2 * 0.5 * int(leverage)))
                             d['position'] = trade_type
 
                     if (d['coin2_balance'] >= 0):
@@ -311,7 +310,6 @@ class BorderBot(object):
                                 t += '\n\tleverage_l_ok: ' + str(self.strategy.l_l_ok) + ', leverage_l_no: ' + str(self.strategy.l_l_no)
                                 t += '\n\tleverage_s_ok: ' + str(self.strategy.l_s_ok) + ', leverage_s_no: ' + str(self.strategy.l_s_no)
                                 print(t)
-                                #input('borderbot.py, line 309')
                                 self.prev_price = self.values[j]['price']
                             prev_value = self.values[j]['price']
                 self.db.update_trader(self, self.mode)
@@ -415,18 +413,6 @@ class BorderBot(object):
                                     self.change_trade(leverage_s, leverage_l, zoom_s, zoom_l, j)
                                     t = '\tSiguiendo a la estrategia: ' + self.strategy.NAME + ', ' + self.strategy.trade['type'] + ', ' + str(datetime.fromtimestamp(self.values[j]['time']).isoformat()) + ', ' + str(self.values[j]['price'])
                                     txt += t + '\n'
-                                    #print(t)
-
-                                    '''for d in self.strategy.derivatives:
-                                        t += '\tstrategy derivatives, zoom ' + str(d['min_zoom']['c']) + ' ' + str(d['min_zoom']['n']) + ', far_price_dif >= ' + str(d['far_price_dif']) + ': ' + str(d['coin2_balance']) + ' USD, investment: ' + str(d['total_investment'])
-
-                                        txt += t + '\n'
-                                        print(t)
-                                    for d in self.derivatives:
-                                        t = '\ttrader derivatives, zoom ' + str(d['min_zoom']['c']) + ' ' + str(d['min_zoom']['n']) + ': ' + str(d['coin2_balance']) + ' USD, investment: ' + str(d['total_investment'])
-                                        txt += t + '\n'
-                                        print(t)'''
-
                                     for d in self.strategy.derivatives:
                                         t2 = ''
                                         if (d['wait_far_price_dif']):
@@ -435,11 +421,9 @@ class BorderBot(object):
                                             t2 += 'zoom ' + str(d['min_zoom']['c']) + ' ' + str(d['min_zoom']['n'])
                                         t += '\n\tstrategy derivatives, ' + t2 + ', ' + str(d['coin2_balance']) + ' USD, investment: ' + str(d['total_investment'])
                                         txt += t + '\n'
-                                        #print(t)
                                     for d in self.derivatives:
                                         t += '\n\tderivatives, zoom ' + str(d['min_zoom']['c']) + ' ' + str(d['min_zoom']['n']) + ', ' + str(d['coin2_balance']) + ' USD, investment: ' + str(d['total_investment'])
                                         txt += t + '\n'
-                                        #print(t)
 
                                     t += '\tleverage_s: ' + str(leverage_s) + '\n'
                                     t += '\tleverage_l: ' + str(leverage_l) + '\n'

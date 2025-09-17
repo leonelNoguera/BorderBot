@@ -166,8 +166,6 @@ strategy derivatives, long, zoom >= ...
 
 Estas son variantes de la estrategia que se está usando en ese momento.
 Se utilizan las variables 'far_price_dif' o 'zoom' para indicar el momento de apertura del long o del short de la estrategia.
-Pero el momento de cierre del trade aun es el mismo que en la estrategia original.
-Esta funcionalidad aun puede tener bugs.
 
 
 ## prices_updater.py
