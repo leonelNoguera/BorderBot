@@ -302,7 +302,7 @@ class BorderBot(object):
                                         t2 += 'far_price_dif >= ' + str(d['far_price_dif'])
                                     if (d['wait_zoom']):
                                         t2 += 'zoom ' + str(d['min_zoom']['c']) + ' ' + str(d['min_zoom']['n'])
-                                    t += '\n\tstrategy derivatives, ' + t2 + ', ' + str(d['coin2_balance']) + ' USD, investment: ' + str(d['total_investment'])
+                                    t += '\n\tstrategy derivatives, ' + d['position'] + ', ' + t2 + ', ' + str(d['coin2_balance']) + ' USD, investment: ' + str(d['total_investment']) + ', leverage: ' + str(d['leverage'])
                                 for d in self.derivatives:
                                     t += '\n\tderivatives, zoom ' + str(d['min_zoom']['c']) + ' ' + str(d['min_zoom']['n']) + ', ' + str(d['coin2_balance']) + ' USD, investment: ' + str(d['total_investment'])
 
@@ -419,7 +419,7 @@ class BorderBot(object):
                                             t2 += 'far_price_dif >= ' + str(d['far_price_dif'])
                                         if (d['wait_zoom']):
                                             t2 += 'zoom ' + str(d['min_zoom']['c']) + ' ' + str(d['min_zoom']['n'])
-                                        t += '\n\tstrategy derivatives, ' + t2 + ', ' + str(d['coin2_balance']) + ' USD, investment: ' + str(d['total_investment'])
+                                        t += '\n\tstrategy derivatives, ' + d['position'] + ', ' + t2 + ', ' + str(d['coin2_balance']) + ' USD, investment: ' + str(d['total_investment']) + ', leverage: ' + str(d['leverage'])
                                         txt += t + '\n'
                                     for d in self.derivatives:
                                         t += '\n\tderivatives, zoom ' + str(d['min_zoom']['c']) + ' ' + str(d['min_zoom']['n']) + ', ' + str(d['coin2_balance']) + ' USD, investment: ' + str(d['total_investment'])
