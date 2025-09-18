@@ -79,15 +79,14 @@ class Strategy():
     def change_initial_config(self):
         self.initial_config = json.JSONEncoder().encode({'type' : self.NAME.split(',')[0], 'sl_s_dif' : float(self.NAME.split(',')[1]), 'sl_l_dif' : float(self.NAME.split(',')[1]), 'sl_reduced_dif' : self.sl_reduced_dif, 'sl_initial_dif' : self.sl_initial_dif, 'okno_inc' : self.okno_inc, 'okno_dec' : self.okno_dec, 'm_aprox' : self.m_aprox, 'leverage_inc' : self.leverage_inc, 'leverage_dec' : self.leverage_dec, 'high_leverage' : self.high_leverage})
 
-        if (not self.derivatives):
-            self.derivatives = [
-                {'position' : 'close', 'coin2_balance' : 1, 'leverage' : None, 'wait_zoom' : False, 'wait_far_price_dif' : True, 'far_price_dif' : self.sl_initial_dif * 4, 'total_investment' : 1, 'open_price' : None},
-                {'position' : 'close', 'coin2_balance' : 1, 'leverage' : None, 'wait_zoom' : False, 'wait_far_price_dif' : True, 'far_price_dif' : self.sl_initial_dif * 2, 'total_investment' : 1, 'open_price' : None},
-                {'position' : 'close', 'coin2_balance' : 1, 'leverage' : None, 'wait_zoom' : False, 'wait_far_price_dif' : True, 'far_price_dif' : self.sl_initial_dif * 1, 'total_investment' : 1, 'open_price' : None},
-                {'position' : 'close', 'coin2_balance' : 1, 'leverage' : None, 'wait_zoom' : False, 'wait_far_price_dif' : True, 'far_price_dif' : self.sl_initial_dif * 0.5, 'total_investment' : 1, 'open_price' : None},
-                {'position' : 'close', 'coin2_balance' : 1, 'leverage' : None, 'wait_zoom' : False, 'wait_far_price_dif' : True, 'far_price_dif' : self.sl_initial_dif * 0.25, 'total_investment' : 1, 'open_price' : None},
-                {'position' : 'close', 'coin2_balance' : 1, 'leverage' : None, 'wait_zoom' : False, 'wait_far_price_dif' : True, 'far_price_dif' : self.sl_initial_dif * 0, 'total_investment' : 1, 'open_price' : None},
-                {'position' : 'close', 'coin2_balance' : 1, 'leverage' : None, 'wait_zoom' : True, 'min_zoom' : {'c' : '>=', 'n' : 0}, 'wait_far_price_dif' : False, 'total_investment' : 1, 'open_price' : None}]
+        self.derivatives = [
+            {'position' : 'close', 'coin2_balance' : 1, 'leverage' : None, 'wait_zoom' : False, 'wait_far_price_dif' : True, 'far_price_dif' : self.sl_initial_dif * 4, 'total_investment' : 1, 'open_price' : None},
+            {'position' : 'close', 'coin2_balance' : 1, 'leverage' : None, 'wait_zoom' : False, 'wait_far_price_dif' : True, 'far_price_dif' : self.sl_initial_dif * 2, 'total_investment' : 1, 'open_price' : None},
+            {'position' : 'close', 'coin2_balance' : 1, 'leverage' : None, 'wait_zoom' : False, 'wait_far_price_dif' : True, 'far_price_dif' : self.sl_initial_dif * 1, 'total_investment' : 1, 'open_price' : None},
+            {'position' : 'close', 'coin2_balance' : 1, 'leverage' : None, 'wait_zoom' : False, 'wait_far_price_dif' : True, 'far_price_dif' : self.sl_initial_dif * 0.5, 'total_investment' : 1, 'open_price' : None},
+            {'position' : 'close', 'coin2_balance' : 1, 'leverage' : None, 'wait_zoom' : False, 'wait_far_price_dif' : True, 'far_price_dif' : self.sl_initial_dif * 0.25, 'total_investment' : 1, 'open_price' : None},
+            {'position' : 'close', 'coin2_balance' : 1, 'leverage' : None, 'wait_zoom' : False, 'wait_far_price_dif' : True, 'far_price_dif' : self.sl_initial_dif * 0, 'total_investment' : 1, 'open_price' : None},
+            {'position' : 'close', 'coin2_balance' : 1, 'leverage' : None, 'wait_zoom' : True, 'min_zoom' : {'c' : '>=', 'n' : 0}, 'wait_far_price_dif' : False, 'total_investment' : 1, 'open_price' : None}]
 
     def change_status(self, values, i, fee_short, fee_long):
         """
