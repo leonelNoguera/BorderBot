@@ -80,7 +80,7 @@ class BorderBot(object):
             html = soup.decode()
             if (self.price_source == 'jupiter'):
                 try:
-                    price = float(json.JSONDecoder().decode(html)['data'][self.config[self.coin1 + '-' + self.coin2]['id']]['price'])
+                    price = float(json.JSONDecoder().decode(html)[self.config[self.coin1]['id']]['usdPrice'])
                     new = {'time' : datetime.now().timestamp(), 'price' : price}
                     self.values.append(new)
                     if (not self.strategy):
@@ -99,7 +99,7 @@ class BorderBot(object):
         self.values = []
         self.trade_type = None
         if (self.price_source == 'jupiter'):
-            self.link = 'https://lite-api.jup.ag/price/v2?ids=' + self.config[self.coin1 + '-' + self.coin2]['id']
+            self.link = 'https://lite-api.jup.ag/price/v3?ids=' + self.config[self.coin1 + '-' + self.coin2]['id']
         self.analyze()
 
 
@@ -302,7 +302,7 @@ class BorderBot(object):
                                         t2 += 'far_price_dif >= ' + str(d['far_price_dif'])
                                     if (d['wait_zoom']):
                                         t2 += 'zoom ' + str(d['min_zoom']['c']) + ' ' + str(d['min_zoom']['n'])
-                                    t += '\n\tstrategy derivatives, ' + d['position'] + ', ' + t2 + ', ' + str(d['coin2_balance']) + ' USD, investment: ' + str(d['total_investment']) + ', leverage: ' + str(d['leverage'])
+                                    t += '\n\tstrategy derivatives, ' + d['position'] + ', ' + t2 + ', ' + str(d['coin2_balance']) + ' USD, investment: ' + str(d['total_investment']) + ', leverage: ' + str(int(d['leverage']))
                                 for d in self.derivatives:
                                     t += '\n\tderivatives, zoom ' + str(d['min_zoom']['c']) + ' ' + str(d['min_zoom']['n']) + ', ' + str(d['coin2_balance']) + ' USD, investment: ' + str(d['total_investment'])
 
@@ -419,7 +419,7 @@ class BorderBot(object):
                                             t2 += 'far_price_dif >= ' + str(d['far_price_dif'])
                                         if (d['wait_zoom']):
                                             t2 += 'zoom ' + str(d['min_zoom']['c']) + ' ' + str(d['min_zoom']['n'])
-                                        t += '\n\tstrategy derivatives, ' + d['position'] + ', ' + t2 + ', ' + str(d['coin2_balance']) + ' USD, investment: ' + str(d['total_investment']) + ', leverage: ' + str(d['leverage'])
+                                        t += '\n\tstrategy derivatives, ' + d['position'] + ', ' + t2 + ', ' + str(d['coin2_balance']) + ' USD, investment: ' + str(d['total_investment']) + ', leverage: ' + str(int(d['leverage']))
                                         txt += t + '\n'
                                     for d in self.derivatives:
                                         t += '\n\tderivatives, zoom ' + str(d['min_zoom']['c']) + ' ' + str(d['min_zoom']['n']) + ', ' + str(d['coin2_balance']) + ' USD, investment: ' + str(d['total_investment'])

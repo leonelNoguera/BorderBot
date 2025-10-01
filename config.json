@@ -11,7 +11,7 @@
 	"prices_gap_tolerance_seconds" : 600,
 	"SOL-USDT" : {
 		"id" : "So11111111111111111111111111111111111111112",
-		"decimals" : 9
+		"decimals" : 14
 	},
 	"POL-USDT" : {
 		"id" : "Gz7VkD4MacbEB6yC5XD3HcumEiYx2EtDYYrfikGsvopG",
@@ -19,22 +19,22 @@
 	},
 	"DRIFT-USDT" : {
 		"id" : "DriFtupJYLTosbwoN8koMbEYSx54aFAVLddWsbksjwg7",
-		"decimals" : 6,
+		"decimals" : 16,
 		"dif_tolerance" : 0.07,
 		"last_dif_timestamp" : 0,
 
-		"random_var_add_less_priority" : 1,
+		"random_var_add_less_priority" : 3,
 		"random_var_default_less_priority" : 1,
-		"random_var_equal_priority" : 9,
+		"random_var_equal_priority" : 1,
 		"random_var_default_more_priority" : 1,
-		"random_var_add_more_priority" : 1,
+		"random_var_add_more_priority" : 3,
 
-		"sl_dif" : 0.0465,
+		"sl_dif" : 0.0516,
 		"sl_dif_min" : 0.0001,
 		"sl_dif_max" : 0.1,
 		"sl_dif_decimals" : 4,
 
-		"m_aprox" : 0.1109,
+		"m_aprox" : 0.0002,
 		"m_aprox_min" : 0,
 		"m_aprox_max" : 0.15,
 		"m_aprox_decimals" : 4,
@@ -45,37 +45,42 @@
 
 		"last_pl_priority" : 3,
 
+		"far_price_dif" : 0.0106,
+		"far_price_dif_min" : 0.0001,
+		"far_price_dif_max" : 0.015,
+		"far_price_dif_decimals" : 4,
+
 		"high_leverage" : 85,
 		"high_leverage_min" : 1,
 		"high_leverage_max" : 100,
 		"high_leverage_decimals" : 0,
 
-		"leverage_inc" : 0.6314,
+		"leverage_inc" : 0.0007,
 		"leverage_inc_min" : 0.0001,
 		"leverage_inc_max" : 1.5,
 		"leverage_inc_decimals" : 4,
 
-		"leverage_dec" : 0.9827,
+		"leverage_dec" : 1.1027,
 		"leverage_dec_min" : 0.0001,
 		"leverage_dec_max" : 1.5,
 		"leverage_dec_decimals" : 4,
 
-		"sl_reduced_dif" : 0.0581,
+		"sl_reduced_dif" : 0.07,
 		"sl_reduced_dif_min" : 0,
 		"sl_reduced_dif_max" : 0.2,
 		"sl_reduced_dif_decimals" : 4,
 
-        "sl_initial_dif" : 0.0231,
+        "sl_initial_dif" : 0.0087,
 		"sl_initial_dif_min" : 0.002,
 		"sl_initial_dif_max" : 0.025,
 		"sl_initial_dif_decimals" : 4,
 
-        "okno_inc" : 0.0417,
+        "okno_inc" : 0.0598,
 		"okno_inc_min" : 0,
 		"okno_inc_max" : 0.075,
 		"okno_inc_decimals" : 4,
 
-        "okno_dec" : 0.1316,
+        "okno_dec" : 0.0093,
 		"okno_dec_min" : 0,
 		"okno_dec_max" : 0.2,
 		"okno_dec_decimals" : 4

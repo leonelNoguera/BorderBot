@@ -217,8 +217,6 @@ class Db(object):
 
 			v.init_timestamp = init_timestamp
 			v.last_timestamp = last_timestamp
-			if (derivatives):
-				v.derivatives = json.JSONDecoder().decode(derivatives)
 			v.stop_loss = stop_loss
 			v.trade['type'] = trade_type
 			v.trade['prev_type'] = trade_type
@@ -240,7 +238,9 @@ class Db(object):
 			v.zoom_s = zoom_s
 			v.zoom_l = zoom_l
 			v.far_price = far_price
-			v.initial_config = initial_config
+			v.set_config(json.JSONDecoder().decode(initial_config))
+			if (derivatives):
+				v.derivatives = json.JSONDecoder().decode(derivatives)
 			if (change_comp):
 				v.comp_initial_config = comp_initial_config
 				v.comp_last_timestamp = comp_last_timestamp
@@ -248,7 +248,6 @@ class Db(object):
 				v.comp_pl = comp_pl
 		else:
 			v.last_timestamp = row['last_timestamp']
-			v.derivatives = row['derivatives']
 			v.stop_loss = row['stop_loss']
 			v.trade['type'] = row['trade_type']
 			v.trade['prev_type'] = row['trade_type']
@@ -273,6 +272,7 @@ class Db(object):
 			v.comp_prev_pl = row['comp_prev_pl']
 			v.comp_pl = row['comp_pl']
 			v.set_config(row['initial_config'])
+			v.derivatives = row['derivatives']
 
 		return v
 
@@ -307,15 +307,8 @@ class Db(object):
 		s = None
 		if (mode != 'backtesting'):
 			s = self.get_best_strategy(coin1, coin2, timer, config, m, mode, socket)
-
-			if (s):
-				initial_config = json.JSONDecoder().decode(s.initial_config)
-				s.set_config(initial_config)
 		else:
 			s, m2 = self.get_next_strategy_to_test(coin1, coin2, timer, config, {'p_s_u' : 0, 'p_c_u' : 0, 'p_s_d' : 0, 'p_c_d' : 0, 'e_p_u' : 0, 'e_p_d' : 0})
-			if (s):
-				initial_config = json.JSONDecoder().decode(s.initial_config)
-				s.set_config(initial_config)
 			if (m2):
 				m = self.set_psc(m, m2)
 			m.initial_config = s.initial_config
@@ -370,11 +363,13 @@ class Db(object):
 			if (rows): # Significa que ya había una estrategia con la configuración por defecto.
 				new_initial_config = ''
 				# Busca la última estrategia ready_to_use y con mayor pl.
-				statement = 'SELECT last_timestamp, pl, initial_config, comp_initial_config FROM strategies WHERE (timer = ' + str(timer) + ' && coin1 = "' + coin1 + '" && coin2 = "' + coin2 + '" AND ready_to_use) ORDER BY pl DESC LIMIT 1;'
+				d_comp = None
+				statement = 'SELECT last_timestamp, pl, initial_config, comp_initial_config, derivatives FROM strategies WHERE (timer = ' + str(timer) + ' && coin1 = "' + coin1 + '" && coin2 = "' + coin2 + '" AND ready_to_use) ORDER BY pl DESC LIMIT 1;'
 				cur.execute(statement)
 				rows = cur.fetchall()
 				if (rows):
-					for (last_timestamp, pl, initial_config, comp_initial_config) in rows:
+					for (last_timestamp, pl, initial_config, comp_initial_config, derivatives) in rows:
+						d_comp = json.JSONDecoder().decode(derivatives)
 						# Seleccionar la mejor dentro de esa lista.
 						statement = 'SELECT last_timestamp, pl, comp_pl, comp_prev_pl, initial_config FROM strategies WHERE (timer = ' + str(timer) + ' && coin1 = "' + coin1 + '" && coin2 = "' + coin2 + '" AND comp_initial_config = \'' + comp_initial_config + '\' AND ready_to_use) ORDER BY comp_pl DESC, pl DESC LIMIT 1;'
 						cur.execute(statement)
@@ -386,19 +381,30 @@ class Db(object):
 									new_initial_config = initial_config
 								else:
 									new_initial_config = comp_initial_config
-				dif_initial_config = {'sl_s_dif' : 0, 'sl_l_dif' : 0, 'sl_reduced_dif' : 0, 'sl_initial_dif' : 0, 'okno_inc' : 0, 'okno_dec' : 0, 'm_aprox' : 0, 'leverage_inc' : 0, 'leverage_dec' : 0, 'high_leverage' : 0}
+				dif_initial_config = {'sl_s_dif' : 0, 'sl_l_dif' : 0, 'sl_reduced_dif' : 0, 'sl_initial_dif' : 0, 'okno_inc' : 0, 'okno_dec' : 0, 'm_aprox' : 0, 'leverage_inc' : 0, 'leverage_dec' : 0, 'high_leverage' : 0, 'far_price_dif' : 0}
 				if (new_initial_config):
-					statement = 'SELECT name, initial_config, comp_initial_config FROM strategies WHERE (timer = ' + str(timer) + ' && coin1 = "' + coin1 + '" && coin2 = "' + coin2 + '" AND ready_to_use AND initial_config = \'' + new_initial_config + '\') LIMIT 1;'
+					statement = 'SELECT name, initial_config, comp_initial_config, derivatives FROM strategies WHERE (timer = ' + str(timer) + ' && coin1 = "' + coin1 + '" && coin2 = "' + coin2 + '" AND ready_to_use AND initial_config = \'' + new_initial_config + '\') LIMIT 1;'
 					cur = self.conn.cursor()
 					cur.execute(statement)
 					rows = cur.fetchall()
-					for (name, initial_config, comp_initial_config) in rows:
+					for (name, initial_config, comp_initial_config, derivatives) in rows:
 						v = strategy.Strategy(self, timer, coin1, coin2, config = config2, name = name, mode = self.mode, socket = self.socket, save = False)
 						initial_config = json.JSONDecoder().decode(initial_config)
 						comp_initial_config = json.JSONDecoder().decode(comp_initial_config)
 						v.set_config(initial_config)
+
+						d = json.JSONDecoder().decode(derivatives)
+						max_d = (d[0]['coin2_balance'] - d[0]['total_investment'])
+						for i in range(1, len(d)):
+							if (d[i]['coin2_balance'] - d[i]['total_investment'] > max_d):
+								max_d = (d[i]['coin2_balance'] - d[i]['total_investment'])
+						max_d_comp = (d_comp[0]['coin2_balance'] - d_comp[0]['total_investment'])
+						for i in range(1, len(d_comp)):
+							if (d_comp[i]['coin2_balance'] - d_comp[i]['total_investment'] > max_d_comp):
+								max_d_comp = (d_comp[i]['coin2_balance'] - d_comp[i]['total_investment'])
+
 						if (comp_initial_config):
-							dif_initial_config = {'sl_s_dif' : 0, 'sl_l_dif' : 0, 'sl_reduced_dif' : 0, 'sl_initial_dif' : 0, 'okno_inc' : 0, 'okno_dec' : 0, 'm_aprox' : 0, 'leverage_inc' : 0, 'leverage_dec' : 0, 'high_leverage' : 0}
+							dif_initial_config = {'sl_s_dif' : 0, 'sl_l_dif' : 0, 'sl_reduced_dif' : 0, 'sl_initial_dif' : 0, 'okno_inc' : 0, 'okno_dec' : 0, 'm_aprox' : 0, 'leverage_inc' : 0, 'leverage_dec' : 0, 'high_leverage' : 0, 'far_price_dif' : 0}
 							keys = list(initial_config.keys())[1:]
 							for k in keys:
 								r = 0
@@ -406,6 +412,10 @@ class Db(object):
 									r = -1
 								if (initial_config[k] > comp_initial_config[k]):
 									r = 1
+								# Este se calcula diferente debido a que es una variable que no influye en 'pl', por lo cual no tendría una correlación.
+								if ((k == 'far_price_dif') and (max_d < max_d_comp)):
+									r = r * -1
+
 								dif_initial_config[k] = r
 
 				prev_leverage_inc = v.leverage_inc
@@ -421,6 +431,9 @@ class Db(object):
 					v.sl_s_dif = self.random_var(v.sl_s_dif, config2[coin1 + '-' + coin2]['sl_dif_min'], config2[coin1 + '-' + coin2]['sl_dif_max'], config2[coin1 + '-' + coin2]['sl_dif_decimals'], dif_initial_config['sl_s_dif'])
 					v.sl_l_dif = v.sl_s_dif
 					v.high_leverage = int(self.random_var(v.high_leverage, config2[coin1 + '-' + coin2]['high_leverage_min'], config2[coin1 + '-' + coin2]['high_leverage_max'], config2[coin1 + '-' + coin2]['high_leverage_decimals'], dif_initial_config['high_leverage']))
+					#print(v.far_price_dif)
+					v.far_price_dif = self.random_var(v.far_price_dif, config2[coin1 + '-' + coin2]['far_price_dif_min'], config2[coin1 + '-' + coin2]['far_price_dif_max'], config2[coin1 + '-' + coin2]['far_price_dif_decimals'], dif_initial_config['far_price_dif'])
+					#input(v.far_price_dif)
 					dif_ok = False
 					while (not dif_ok):
 						v.leverage_inc = prev_leverage_inc

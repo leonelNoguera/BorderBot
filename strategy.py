@@ -45,6 +45,7 @@ class Strategy():
         self.high_leverage = config[self.coin1 + '-' + self.coin2]['high_leverage']
         self.leverage_inc = config[self.coin1 + '-' + self.coin2]['leverage_inc']
         self.leverage_dec = config[self.coin1 + '-' + self.coin2]['leverage_dec']
+        self.far_price_dif = config[self.coin1 + '-' + self.coin2]['far_price_dif']
 
         self.last_pl_priority = config[self.coin1 + '-' + self.coin2]['last_pl_priority']
 
@@ -74,19 +75,16 @@ class Strategy():
         self.high_leverage = initial_config['high_leverage']
         self.leverage_inc = initial_config['leverage_inc']
         self.leverage_dec = initial_config['leverage_dec']
+        self.far_price_dif = initial_config['far_price_dif']
         self.change_initial_config()
 
     def change_initial_config(self):
-        self.initial_config = json.JSONEncoder().encode({'type' : self.NAME.split(',')[0], 'sl_s_dif' : float(self.NAME.split(',')[1]), 'sl_l_dif' : float(self.NAME.split(',')[1]), 'sl_reduced_dif' : self.sl_reduced_dif, 'sl_initial_dif' : self.sl_initial_dif, 'okno_inc' : self.okno_inc, 'okno_dec' : self.okno_dec, 'm_aprox' : self.m_aprox, 'leverage_inc' : self.leverage_inc, 'leverage_dec' : self.leverage_dec, 'high_leverage' : self.high_leverage})
+        self.initial_config = json.JSONEncoder().encode({'type' : self.NAME.split(',')[0], 'sl_s_dif' : float(self.NAME.split(',')[1]), 'sl_l_dif' : float(self.NAME.split(',')[1]), 'sl_reduced_dif' : self.sl_reduced_dif, 'sl_initial_dif' : self.sl_initial_dif, 'okno_inc' : self.okno_inc, 'okno_dec' : self.okno_dec, 'm_aprox' : self.m_aprox, 'leverage_inc' : self.leverage_inc, 'leverage_dec' : self.leverage_dec, 'high_leverage' : self.high_leverage, 'far_price_dif' : self.far_price_dif})
 
         self.derivatives = [
-            {'position' : 'close', 'coin2_balance' : 1, 'leverage' : None, 'wait_zoom' : False, 'wait_far_price_dif' : True, 'far_price_dif' : self.sl_initial_dif * 4, 'total_investment' : 1, 'open_price' : None},
-            {'position' : 'close', 'coin2_balance' : 1, 'leverage' : None, 'wait_zoom' : False, 'wait_far_price_dif' : True, 'far_price_dif' : self.sl_initial_dif * 2, 'total_investment' : 1, 'open_price' : None},
-            {'position' : 'close', 'coin2_balance' : 1, 'leverage' : None, 'wait_zoom' : False, 'wait_far_price_dif' : True, 'far_price_dif' : self.sl_initial_dif * 1, 'total_investment' : 1, 'open_price' : None},
-            {'position' : 'close', 'coin2_balance' : 1, 'leverage' : None, 'wait_zoom' : False, 'wait_far_price_dif' : True, 'far_price_dif' : self.sl_initial_dif * 0.5, 'total_investment' : 1, 'open_price' : None},
-            {'position' : 'close', 'coin2_balance' : 1, 'leverage' : None, 'wait_zoom' : False, 'wait_far_price_dif' : True, 'far_price_dif' : self.sl_initial_dif * 0.25, 'total_investment' : 1, 'open_price' : None},
-            {'position' : 'close', 'coin2_balance' : 1, 'leverage' : None, 'wait_zoom' : False, 'wait_far_price_dif' : True, 'far_price_dif' : self.sl_initial_dif * 0, 'total_investment' : 1, 'open_price' : None},
-            {'position' : 'close', 'coin2_balance' : 1, 'leverage' : None, 'wait_zoom' : True, 'min_zoom' : {'c' : '>=', 'n' : 0}, 'wait_far_price_dif' : False, 'total_investment' : 1, 'open_price' : None}]
+            {'position' : 'close', 'coin2_balance' : 1, 'leverage' : 1, 'wait_zoom' : False, 'wait_far_price_dif' : True, 'far_price_dif' : self.far_price_dif, 'total_investment' : 1, 'open_price' : None},
+            {'position' : 'close', 'coin2_balance' : 1, 'leverage' : 1, 'wait_zoom' : False, 'wait_far_price_dif' : True, 'far_price_dif' : 0, 'total_investment' : 1, 'open_price' : None}
+        ]
 
     def change_status(self, values, i, fee_short, fee_long):
         """
@@ -279,10 +277,9 @@ class Strategy():
                                     if (d['position'] != self.trade['type']):
                                         if (d['position'] != 'close'):
                                             d['coin2_balance'] = d['coin2_balance'] * (1 + dif2) * (1 - (fee * 0.5 * int(leverage)))
-                                            d['leverage'] = leverage
                                         else:
                                             d['coin2_balance'] = d['coin2_balance'] * (1 - (fee * 0.5 * int(leverage)))
-                                            d['leverage'] = leverage
+                                        d['leverage'] = leverage
                                         d['position'] = self.trade['type']
                                         d['open_price'] = values[i]['price']
                                         t2 = ''
