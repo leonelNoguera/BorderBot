@@ -283,12 +283,19 @@ class Strategy():
                                     if (d['position'] != self.trade['type']):
                                         if (d['position'] != 'close'):
                                             c2 = d['coin2_balance'] * (1 + dif2)
-                                            while (c2 < self.min_balance):
-                                                c2 += 1
+                                            if (c2 < 0):
+                                                c2 = self.min_balance
                                                 d['total_investment'] += 1
+                                            else:
+                                                if (c2 < self.min_balance):
+                                                    c2 += 1
+                                                    d['total_investment'] += 1
                                             d['coin2_balance'] = c2 * (1 - (fee * 0.5 * int(leverage)))
                                         else:
-                                            while (d['coin2_balance'] < self.min_balance):
+                                            if (d['coin2_balance'] < 0):
+                                                d['coin2_balance'] = self.min_balance
+                                                d['total_investment'] += 1
+                                            else:
                                                 d['coin2_balance'] += 1
                                                 d['total_investment'] += 1
                                             d['coin2_balance'] = d['coin2_balance'] * (1 - (fee * 0.5 * int(leverage)))

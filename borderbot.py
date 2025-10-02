@@ -208,9 +208,13 @@ class BorderBot(object):
                     if (d['position'] != 'close'):# El short/long anterior estaba abierto.
                         if (((c == '>') and (zoom > n)) or ((c == '>=') and (zoom >= n))): # Hay zoom para el short/long.
                             c2 = d['coin2_balance'] * (1 + leverage_dif)
-                            while (c2 < self.min_balance):
-                                c2 += 1
+                            if (c2 < 0):
+                                c2 = self.min_balance
                                 d['total_investment'] += 1
+                            else:
+                                if (c2 < self.min_balance):
+                                    c2 += 1
+                                    d['total_investment'] += 1
                             d['coin2_balance'] = c2 * (1 - (fee2 * 0.5 * int(leverage)))
                             d['position'] = trade_type
                         else:
@@ -218,9 +222,13 @@ class BorderBot(object):
                             d['position'] = 'close'
                     else:
                         if (((c == '>') and (zoom > n)) or ((c == '>=') and (zoom >= n))):
-                            while (d['coin2_balance'] < self.min_balance):
-                                d['coin2_balance'] += 1
+                            if (d['coin2_balance'] < 0):
+                                d['coin2_balance'] = self.min_balance
                                 d['total_investment'] += 1
+                            else:
+                                if (d['coin2_balance'] < self.min_balance):
+                                    d['coin2_balance'] += 1
+                                    d['total_investment'] += 1
                             d['coin2_balance'] = d['coin2_balance'] * (1 - (fee2 * 0.5 * int(leverage)))
                             d['position'] = trade_type
 

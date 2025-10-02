@@ -30,12 +30,12 @@
 		"random_var_default_more_priority" : 1,
 		"random_var_add_more_priority" : 3,
 
-		"sl_dif" : 0.0988,
+		"sl_dif" : 0.0999,
 		"sl_dif_min" : 0.0001,
 		"sl_dif_max" : 0.1,
 		"sl_dif_decimals" : 4,
 
-		"m_aprox" : 0.1109,
+		"m_aprox" : 0.001,
 		"m_aprox_min" : 0,
 		"m_aprox_max" : 0.15,
 		"m_aprox_decimals" : 4,
@@ -46,7 +46,7 @@
 
 		"last_pl_priority" : 3,
 
-		"far_price_dif" : 0.0111,
+		"far_price_dif" : 0.0091,
 		"far_price_dif_min" : 0.0001,
 		"far_price_dif_max" : 0.015,
 		"far_price_dif_decimals" : 4,
@@ -56,32 +56,32 @@
 		"high_leverage_max" : 100,
 		"high_leverage_decimals" : 0,
 
-		"leverage_inc" : 0.2599,
+		"leverage_inc" : 0.0003,
 		"leverage_inc_min" : 0.0001,
 		"leverage_inc_max" : 1.5,
 		"leverage_inc_decimals" : 4,
 
-		"leverage_dec" : 0.491,
+		"leverage_dec" : 0.3375,
 		"leverage_dec_min" : 0.0001,
 		"leverage_dec_max" : 1.5,
 		"leverage_dec_decimals" : 4,
 
-		"sl_reduced_dif" : 0.0703,
+		"sl_reduced_dif" : 0.0647,
 		"sl_reduced_dif_min" : 0,
 		"sl_reduced_dif_max" : 0.2,
 		"sl_reduced_dif_decimals" : 4,
 
-        "sl_initial_dif" : 0.0035,
+        "sl_initial_dif" : 0.0079,
 		"sl_initial_dif_min" : 0.002,
 		"sl_initial_dif_max" : 0.025,
 		"sl_initial_dif_decimals" : 4,
 
-        "okno_inc" : 0.0228,
+        "okno_inc" : 0.0532,
 		"okno_inc_min" : 0,
 		"okno_inc_max" : 0.075,
 		"okno_inc_decimals" : 4,
 
-        "okno_dec" : 0.0823,
+        "okno_dec" : 0.1872,
 		"okno_dec_min" : 0,
 		"okno_dec_max" : 0.2,
 		"okno_dec_decimals" : 4
