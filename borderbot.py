@@ -80,7 +80,7 @@ class BorderBot(object):
             html = soup.decode()
             if (self.price_source == 'jupiter'):
                 try:
-                    price = float(json.JSONDecoder().decode(html)[self.config[self.coin1]['id']]['usdPrice'])
+                    price = float(json.JSONDecoder().decode(html)[self.config[self.coin1 + '-' + self.coin2]['id']]['usdPrice'])
                     new = {'time' : datetime.now().timestamp(), 'price' : price}
                     self.values.append(new)
                     if (not self.strategy):
