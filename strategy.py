@@ -1,6 +1,3 @@
-"""
-A trading strategy.
-"""
 from datetime import datetime
 import json
 class Strategy():
@@ -46,6 +43,7 @@ class Strategy():
         self.leverage_inc = config[self.coin1 + '-' + self.coin2]['leverage_inc']
         self.leverage_dec = config[self.coin1 + '-' + self.coin2]['leverage_dec']
         self.far_price_dif = config[self.coin1 + '-' + self.coin2]['far_price_dif']
+        self.min_balance = config['min_balance']
 
         self.last_pl_priority = config[self.coin1 + '-' + self.coin2]['last_pl_priority']
 
@@ -104,10 +102,9 @@ class Strategy():
         while ((j >= 0) and (prev_price == values[i]['price'])):
             prev_price = values[j]['price']
             j -= 1
-        prev = self.trade['type']
         sl = None
 
-        if ((not self.omit) and ((self.trade['type'] != prev) or (not self.stop_loss))):
+        if ((not self.omit) and ((not self.stop_loss) or (self.stop_loss < 0))):
             if (self.trade['type'] == 'short'):
                 self.stop_loss = values[i]['price'] * (1 + (self.sl_initial_dif))
             if (self.trade['type'] == 'long'):
@@ -207,8 +204,10 @@ class Strategy():
                 self.trade['price'] = values[i]['price']
                 if (self.trade['type'] == 'long'):
                     self.trade['type'] = 'short'
+                    self.stop_loss = values[i]['price'] * (1 + (self.sl_initial_dif))
                 else:
                     self.trade['type'] = 'long'
+                    self.stop_loss = values[i]['price'] * (1 - (self.sl_initial_dif))
 
             if (not self.far_price):
                 self.far_price = values[i]['price']
@@ -269,15 +268,29 @@ class Strategy():
                             if (d['wait_zoom']):
                                 c = d['min_zoom']['c']
                                 n = d['min_zoom']['n']
-                            if ((not d['wait_zoom']) or (((c == '>') and (zoom > n)) or ((c == '>=') and (zoom >= n)))):
+                            close_position = False
+                            if ((d['position'] != 'close') and (d['position'] != self.trade['type'])):
+                                coin2_balance = d['coin2_balance'] * (1 + dif2) * (1 - (fee * 0.5 * int(leverage)))
+                                if (coin2_balance  <= 0.01):
+                                    #Cambiar de trade por liquidación.
+                                    close_position = True
+                                    print('Se cerrará la posición.')
+                            if (((not d['wait_zoom']) or (((c == '>') and (zoom > n)) or ((c == '>=') and (zoom >= n)))) and not close_position):
                                 fd = self.far_price / self.trade['price']
                                 if (self.trade['type'] == 'short'):
                                     fd = self.trade['price'] / self.far_price
                                 if ((not d['wait_far_price_dif']) or (fd >= (1 + d['far_price_dif']))):
                                     if (d['position'] != self.trade['type']):
                                         if (d['position'] != 'close'):
-                                            d['coin2_balance'] = d['coin2_balance'] * (1 + dif2) * (1 - (fee * 0.5 * int(leverage)))
+                                            c2 = d['coin2_balance'] * (1 + dif2)
+                                            while (c2 < self.min_balance):
+                                                c2 += 1
+                                                d['total_investment'] += 1
+                                            d['coin2_balance'] = c2 * (1 - (fee * 0.5 * int(leverage)))
                                         else:
+                                            while (d['coin2_balance'] < self.min_balance):
+                                                d['coin2_balance'] += 1
+                                                d['total_investment'] += 1
                                             d['coin2_balance'] = d['coin2_balance'] * (1 - (fee * 0.5 * int(leverage)))
                                         d['leverage'] = leverage
                                         d['position'] = self.trade['type']

@@ -10,7 +10,6 @@ class BorderBot(object):
     """docstring for BorderBot"""
     def __init__(self, args, mode = 'backtesting', socket = None, config = None):
         super(BorderBot, self).__init__()
-        self.db = None
         self.mode = mode
         self.socket = socket
         f = open('config.json', 'r')
@@ -71,16 +70,17 @@ class BorderBot(object):
         self.fee_long = self.min_fee
         self.fee_short = self.min_fee
         self.prices_gap_tolerance_seconds = self.config['prices_gap_tolerance_seconds']
+        self.min_balance = self.config['min_balance']
 
 
-    def get_price(self):# Pendiente analizar si dejar jupiter.
+    def get_price(self):
         """Se obtienen los precios de Jupiter y los guarda en el array self.values"""
         try:
             soup = BeautifulSoup(requests.get(self.link, headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}, timeout = 5).content.decode(), 'html.parser')
             html = soup.decode()
             if (self.price_source == 'jupiter'):
                 try:
-                    price = float(json.JSONDecoder().decode(html)[self.config[self.coin1]['id']]['usdPrice'])
+                    price = float(json.JSONDecoder().decode(html)['data'][self.config[self.coin1 + '-' + self.coin2]['id']]['price'])
                     new = {'time' : datetime.now().timestamp(), 'price' : price}
                     self.values.append(new)
                     if (not self.strategy):
@@ -207,13 +207,20 @@ class BorderBot(object):
                     n = d['min_zoom']['n']
                     if (d['position'] != 'close'):# El short/long anterior estaba abierto.
                         if (((c == '>') and (zoom > n)) or ((c == '>=') and (zoom >= n))): # Hay zoom para el short/long.
-                            d['coin2_balance'] = d['coin2_balance'] * (1 + leverage_dif) * (1 - (fee2 * 0.5 * int(leverage)))
+                            c2 = d['coin2_balance'] * (1 + leverage_dif)
+                            while (c2 < self.min_balance):
+                                c2 += 1
+                                d['total_investment'] += 1
+                            d['coin2_balance'] = c2 * (1 - (fee2 * 0.5 * int(leverage)))
                             d['position'] = trade_type
                         else:
                             d['coin2_balance'] = d['coin2_balance'] * (1 + leverage_dif)
                             d['position'] = 'close'
                     else:
                         if (((c == '>') and (zoom > n)) or ((c == '>=') and (zoom >= n))):
+                            while (d['coin2_balance'] < self.min_balance):
+                                d['coin2_balance'] += 1
+                                d['total_investment'] += 1
                             d['coin2_balance'] = d['coin2_balance'] * (1 - (fee2 * 0.5 * int(leverage)))
                             d['position'] = trade_type
 
