@@ -94,7 +94,7 @@ def threaded_client(connection):
 					prices = []
 					if (values):
 						timer = values['timer']
-						for i in range(100):
+						for i in range(50):
 							if (len(values['prices'])):
 								prices.append(values['prices'].pop(0))
 						if (not len(values['prices'])):

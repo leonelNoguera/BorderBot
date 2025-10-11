@@ -4,6 +4,7 @@ class Strategy():
     def __init__(self, db, timer, coin1, coin2, config, name, mode, socket, save = True):
         super().__init__()
         self.db = db
+        self.config = config
         self.socket = socket
         self.NAME = name
         self.mode = mode
@@ -79,10 +80,10 @@ class Strategy():
     def change_initial_config(self):
         self.initial_config = json.JSONEncoder().encode({'type' : self.NAME.split(',')[0], 'sl_s_dif' : float(self.NAME.split(',')[1]), 'sl_l_dif' : float(self.NAME.split(',')[1]), 'sl_reduced_dif' : self.sl_reduced_dif, 'sl_initial_dif' : self.sl_initial_dif, 'okno_inc' : self.okno_inc, 'okno_dec' : self.okno_dec, 'm_aprox' : self.m_aprox, 'leverage_inc' : self.leverage_inc, 'leverage_dec' : self.leverage_dec, 'high_leverage' : self.high_leverage, 'far_price_dif' : self.far_price_dif})
 
-        self.derivatives = [
-            {'position' : 'close', 'coin2_balance' : 1, 'leverage' : 1, 'wait_zoom' : False, 'wait_far_price_dif' : True, 'far_price_dif' : self.far_price_dif, 'total_investment' : 1, 'open_price' : None},
-            {'position' : 'close', 'coin2_balance' : 1, 'leverage' : 1, 'wait_zoom' : False, 'wait_far_price_dif' : True, 'far_price_dif' : 0, 'total_investment' : 1, 'open_price' : None}
-        ]
+        self.derivatives = self.config[self.coin1 + '-' + self.coin2]['derivatives']
+        for i in range(len(self.derivatives)):
+            if (self.derivatives[i]['wait_far_price_dif']):
+                self.derivatives[i]['far_price_dif'] = self.far_price_dif
 
     def change_status(self, values, i, fee_short, fee_long):
         """
@@ -272,9 +273,11 @@ class Strategy():
                             if ((d['position'] != 'close') and (d['position'] != self.trade['type'])):
                                 coin2_balance = d['coin2_balance'] * (1 + dif2) * (1 - (fee * 0.5 * int(leverage)))
                                 if (coin2_balance  <= 0.01):
-                                    #Cambiar de trade por liquidación.
                                     close_position = True
-                                    print('Se cerrará la posición.')
+                                    print('Se cerrará la posición por liquidación.')
+                                else:
+                                    if (d['close_on_close']):
+                                        close_position = True
                             if (((not d['wait_zoom']) or (((c == '>') and (zoom > n)) or ((c == '>=') and (zoom >= n)))) and not close_position):
                                 fd = self.far_price / self.trade['price']
                                 if (self.trade['type'] == 'short'):
@@ -305,6 +308,8 @@ class Strategy():
                                         t2 = ''
                                         if (d['wait_far_price_dif']):
                                             t2 += ', far_price_dif: ' + str(d['far_price_dif'])
+                                        if (d['close_on_close']):
+                                            t2 += ', close_on_close'
                                         if (d['wait_zoom']):
                                             t2 += ', zoom ' + str(d['min_zoom']['c']) + ' ' + str(d['min_zoom']['n'])
                                         print('strategy derivatives, ' + d['position'] + t2 + ', ' + str(d['coin2_balance']) + ' USD, investment: ' + str(d['total_investment']) + ', ' + datetime.fromtimestamp(values[i]['time']).isoformat() + ', open price: ' + str(d['open_price']) + ', leverage: ' + str(d['leverage']))
@@ -312,6 +317,14 @@ class Strategy():
                                 if (d['position'] != 'close'):
                                     d['coin2_balance'] = d['coin2_balance'] * (1 + dif2)
                                     d['position'] = 'close'
+                                    t2 = ''
+                                    if (d['wait_far_price_dif']):
+                                        t2 += ', far_price_dif: ' + str(d['far_price_dif'])
+                                    if (d['close_on_close']):
+                                        t2 += ', close_on_close'
+                                    if (d['wait_zoom']):
+                                        t2 += ', zoom ' + str(d['min_zoom']['c']) + ' ' + str(d['min_zoom']['n'])
+                                    print('strategy derivatives, ' + d['position'] + t2 + ', ' + str(d['coin2_balance']) + ' USD, investment: ' + str(d['total_investment']) + ', ' + datetime.fromtimestamp(values[i]['time']).isoformat() + ', open price: ' + str(d['open_price']) + ', leverage: ' + str(d['leverage']))
 
                             if (d['coin2_balance'] >= 0):
                                 if (d['coin2_balance'] <= 0.01):
@@ -378,6 +391,10 @@ class Strategy():
                     sl2 = self.far_price * (1 - sl_p + aprox)
                     if (trade_type == 'short'):
                         sl2 = self.far_price * (1 + sl_p - aprox)
+                    if (sl2 < 0):
+                        sl2 = self.far_price * (1 - sl_p)
+                        if (trade_type == 'short'):
+                            sl2 = self.far_price * (1 + sl_p)
 
                     if (
                         (

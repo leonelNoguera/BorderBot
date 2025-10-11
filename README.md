@@ -47,8 +47,8 @@ Esto es para que el riesgo se disminuya rápidamente cuando se está operando co
   - Base de datos mariadb, obviamente.
 
 ## Instalación
-1. 
-``` 
+1.
+```
 git clone https://github.com/leoNoguera/borderbot.git
 ```
  2. instalar mariadb y BeautifulSoup
@@ -92,7 +92,8 @@ Configuración de ejemplo:
 		"random_var_default_more_priority" : 1, -> Aumentar la variable
 		"random_var_add_more_priority" : 1, -> Aumentar la variable luego de un aumento previo
 
-		"sl_dif" : 0.1, -> La diferencia que se aplica entre el precio actual y el stop loss, en el caso de que el stop loss actual supere "sl_reduced_dif"
+		"sl_s_dif" : 0.1, -> La diferencia que se aplica entre el precio actual y el stop loss en un short, en el caso de que el stop loss actual supere "sl_reduced_dif"
+		"sl_l_dif" : 0.1, -> Lo mismo pero con long
 		"sl_dif_min" : 0.0001,
 		"sl_dif_max" : 0.1,
 		"sl_dif_decimals" : 4,
@@ -101,6 +102,11 @@ Configuración de ejemplo:
 		"m_aprox_min" : 0,
 		"m_aprox_max" : 0.15,
 		"m_aprox_decimals" : 4,
+
+		"far_price_dif" : 0.0276, -> En 'strategy derivatives', determina la diferencia mínima que se necesita para cambiar de trade.
+		"far_price_dif_min" : 0.0001,
+		"far_price_dif_max" : 0.15,
+		"far_price_dif_decimals" : 4,
 
 		"min_fee" : 0.0031, -> La fee mínima que se aplicará para cada trade
 		"fee_multiplier" : 95, -> Multiplica a la volatilidad de subidas o bajadas
@@ -141,7 +147,13 @@ Configuración de ejemplo:
         "okno_dec" : 0.4814, -> Determina el decremento de l_ok o l_no
 		"okno_dec_min" : 0,
 		"okno_dec_max" : 0.2,
-		"okno_dec_decimals" : 4
+		"okno_dec_decimals" : 4,
+
+		"derivatives" : [ -> Son variantes de la estrategia. Varían los momentos de entrada o salida de los trades respecto a la estrategia en cuestión.
+            {"position" : "close", "coin2_balance" : 1, "leverage" : 1, "wait_zoom" : false, "wait_far_price_dif" : true, "far_price_dif" : null, "total_investment" : 1, "open_price" : null, "close_on_close" : false},
+            {"position" : "close", "coin2_balance" : 1, "leverage" : 1, "wait_zoom" : false, "wait_far_price_dif" : true, "far_price_dif" : null, "total_investment" : 1, "open_price" : null, "close_on_close" : true},
+            {"position" : "close", "coin2_balance" : 1, "leverage" : 1, "wait_zoom" : false, "wait_far_price_dif" : false, "total_investment" : 1, "open_price" : null, "close_on_close" : false}
+        ]
 	}
 }
 ```

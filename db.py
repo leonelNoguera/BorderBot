@@ -340,7 +340,7 @@ class Db(object):
 			self.set_strategy(msg_in, v, change_comp = True)
 			m = self.set_psc(m, msg_in)
 		else:
-			s = config2[coin1 + '-' + coin2]['sl_dif']
+			s = config2[coin1 + '-' + coin2]['sl_s_dif']
 			m_aprox = config2[coin1 + '-' + coin2]['m_aprox']
 
 			v = strategy.Strategy(self, timer, coin1, coin2, config = config2, name = 'bs,' + str(s) + ',' + str(m_aprox) + ',asl', mode = self.mode, socket = self.socket, save = False)
@@ -412,6 +412,7 @@ class Db(object):
 									r = -1
 								if (initial_config[k] > comp_initial_config[k]):
 									r = 1
+
 								# Este se calcula diferente debido a que es una variable que no influye en 'pl', por lo cual no tendría una correlación.
 								if ((k == 'far_price_dif') and (max_d < max_d_comp)):
 									r = r * -1
@@ -705,9 +706,8 @@ class Db(object):
 
 				self.socket.send(json.JSONEncoder().encode({'type' : 'SQL', 'sub-type' : 'update_strategy', 'timer' : v.timer, 'coin1' : v.coin1, 'coin2' : v.coin2, 'update_comp' : update_comp, 'ready' : True}).encode())
 				r = self.socket.recv(5000).decode()
-				if (not st):
-					msg_in = json.JSONDecoder().decode(r)
-					return msg_in['comp']
+				msg_in = json.JSONDecoder().decode(r)
+				return msg_in['comp']
 		else:
 			if (v):
 				cur = self.conn.cursor()

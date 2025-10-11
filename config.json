@@ -24,67 +24,74 @@
 		"dif_tolerance" : 0.07,
 		"last_dif_timestamp" : 0,
 
-		"random_var_add_less_priority" : 3,
+		"random_var_add_less_priority" : 2,
 		"random_var_default_less_priority" : 1,
-		"random_var_equal_priority" : 1,
+		"random_var_equal_priority" : 5,
 		"random_var_default_more_priority" : 1,
-		"random_var_add_more_priority" : 3,
+		"random_var_add_more_priority" : 2,
 
-		"sl_dif" : 0.0999,
+		"sl_s_dif" : 0.0586,
+		"sl_l_dif" : 0.0266,
 		"sl_dif_min" : 0.0001,
 		"sl_dif_max" : 0.1,
 		"sl_dif_decimals" : 4,
 
-		"m_aprox" : 0.001,
+		"m_aprox" : 0.1156,
 		"m_aprox_min" : 0,
 		"m_aprox_max" : 0.15,
 		"m_aprox_decimals" : 4,
+
+		"far_price_dif" : 0.0014,
+		"far_price_dif_min" : 0.0001,
+		"far_price_dif_max" : 0.02,
+		"far_price_dif_decimals" : 4,
 
 		"min_fee" : 0.0031,
 		"fee_multiplier" : 100,
 		"last_up_down_priority" : 20,
 
-		"last_pl_priority" : 3,
-
-		"far_price_dif" : 0.0091,
-		"far_price_dif_min" : 0.0001,
-		"far_price_dif_max" : 0.015,
-		"far_price_dif_decimals" : 4,
+		"last_pl_priority" : 2,
 
 		"high_leverage" : 85,
 		"high_leverage_min" : 1,
 		"high_leverage_max" : 100,
 		"high_leverage_decimals" : 0,
 
-		"leverage_inc" : 0.0003,
+		"leverage_inc" : 0.635,
 		"leverage_inc_min" : 0.0001,
 		"leverage_inc_max" : 1.5,
 		"leverage_inc_decimals" : 4,
 
-		"leverage_dec" : 0.3375,
+		"leverage_dec" : 1.4785,
 		"leverage_dec_min" : 0.0001,
 		"leverage_dec_max" : 1.5,
 		"leverage_dec_decimals" : 4,
 
-		"sl_reduced_dif" : 0.0647,
+		"sl_reduced_dif" : 0.018,
 		"sl_reduced_dif_min" : 0,
 		"sl_reduced_dif_max" : 0.2,
 		"sl_reduced_dif_decimals" : 4,
 
-        "sl_initial_dif" : 0.0079,
+        "sl_initial_dif" : 0.0237,
 		"sl_initial_dif_min" : 0.002,
 		"sl_initial_dif_max" : 0.025,
 		"sl_initial_dif_decimals" : 4,
 
-        "okno_inc" : 0.0532,
+        "okno_inc" : 0.0734,
 		"okno_inc_min" : 0,
 		"okno_inc_max" : 0.075,
 		"okno_inc_decimals" : 4,
 
-        "okno_dec" : 0.1872,
+        "okno_dec" : 0.1626,
 		"okno_dec_min" : 0,
 		"okno_dec_max" : 0.2,
-		"okno_dec_decimals" : 4
+		"okno_dec_decimals" : 4,
+
+		"derivatives" : [
+            {"position" : "close", "coin2_balance" : 1, "leverage" : 1, "wait_zoom" : false, "wait_far_price_dif" : true, "far_price_dif" : null, "total_investment" : 1, "open_price" : null, "close_on_close" : false},
+            {"position" : "close", "coin2_balance" : 1, "leverage" : 1, "wait_zoom" : false, "wait_far_price_dif" : true, "far_price_dif" : null, "total_investment" : 1, "open_price" : null, "close_on_close" : true},
+            {"position" : "close", "coin2_balance" : 1, "leverage" : 1, "wait_zoom" : false, "wait_far_price_dif" : false, "total_investment" : 1, "open_price" : null, "close_on_close" : false}
+        ]
 	},
 	"ETH-USDT" : {
 		"id" : "7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs",
