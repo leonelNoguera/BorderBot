@@ -346,6 +346,7 @@ class BorderBot(object):
             first_timestamp_in_list = None
             if (self.simulate_trading):
                 trader_log_file_path = 'logs/' + self.coin1 + '-' + self.coin2 + '_' + str(self.timer) + '_' + datetime.now().isoformat() + '.txt'
+                prev_position_best_derivative = 'close'
                 while (True):
                     txt = ''
                     prev_omitted = False
@@ -406,6 +407,7 @@ class BorderBot(object):
                             )
                             if (new_strategy and (new_strategy.initial_config != self.strategy.initial_config)): # Nuevo trader.
                                 t = datetime.fromtimestamp(self.values[j]['time']).isoformat() + ' cambio de estrategia'
+                                t += new_strategy.initial_config + '\n'
                                 txt += t + '\n'
                                 print(t)
 
@@ -440,7 +442,7 @@ class BorderBot(object):
                                         t += '\n\tderivatives, zoom ' + str(d['min_zoom']['c']) + ' ' + str(d['min_zoom']['n']) + ', ' + str(d['coin2_balance']) + ' USD, investment: ' + str(d['total_investment'])
                                         txt += t + '\n'
 
-                                    t += '\tleverage_s: ' + str(leverage_s) + '\n'
+                                    t += '\n\tleverage_s: ' + str(leverage_s) + '\n'
                                     t += '\tleverage_l: ' + str(leverage_l) + '\n'
                                     t += '\tzoom_s: ' + str(self.strategy.zoom_s) + '\n'
                                     t += '\tzoom_l: ' + str(self.strategy.zoom_l) + '\n'
@@ -458,6 +460,18 @@ class BorderBot(object):
                                     f.close()
                                 except:
                                     0
+
+                                max_d = 0
+                                ds = self.strategy.derivatives
+                                for i in range(len(ds)):
+                                    if ((ds[i]['coin2_balance'] - ds[i]['total_investment']) > (ds[max_d]['coin2_balance'] - ds[max_d]['total_investment'])):
+                                        max_d = i
+                                if (ds[max_d]['position'] != prev_position_best_derivative):
+                                    prev_position_best_derivative = ds[max_d]['position']
+                                    f = open('trades_' + self.coin1 + '-' + self.coin2 + '.json', 'a')
+                                    f.write(datetime.fromtimestamp(self.values[j]['time']).isoformat() + ',' + ds[max_d]['position'] + ',' + str(self.values[j]['price']) + '\n')
+                                    f.close()
+
                                 prev_status[self.coin1 + '-' + self.coin2] = {'trade_type' : self.trade_type, 'leverage_s' : leverage_s, 'leverage_l' : leverage_l, 'zoom_s' : self.strategy.zoom_s, 'zoom_l' : self.strategy.zoom_l, 'derivatives' : self.strategy.derivatives}
                                 f = open('status.json', 'w')
                                 f.write(json.JSONEncoder().encode(prev_status))
