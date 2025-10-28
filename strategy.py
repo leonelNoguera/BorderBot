@@ -299,8 +299,9 @@ class Strategy():
                                                 d['coin2_balance'] = self.min_balance
                                                 d['total_investment'] += 1
                                             else:
-                                                d['coin2_balance'] += 1
-                                                d['total_investment'] += 1
+                                                if (d['coin2_balance'] < self.min_balance):
+                                                    d['coin2_balance'] += 1
+                                                    d['total_investment'] += 1
                                             d['coin2_balance'] = d['coin2_balance'] * (1 - (fee * 0.5 * int(leverage)))
                                         d['leverage'] = leverage
                                         d['position'] = self.trade['type']
@@ -312,7 +313,7 @@ class Strategy():
                                             t2 += ', close_on_close'
                                         if (d['wait_zoom']):
                                             t2 += ', zoom ' + str(d['min_zoom']['c']) + ' ' + str(d['min_zoom']['n'])
-                                        print('strategy derivatives, ' + d['position'] + t2 + ', ' + str(d['coin2_balance']) + ' USD, investment: ' + str(d['total_investment']) + ', ' + datetime.fromtimestamp(values[i]['time']).isoformat() + ', open price: ' + str(d['open_price']) + ', leverage: ' + str(d['leverage']))
+                                        print('strategy derivatives, ' + d['position'] + t2 + ', ' + str(d['coin2_balance']) + ' USD, investment: ' + str(d['total_investment']) + ', ' + datetime.fromtimestamp(values[i]['time']).isoformat() + ', open price: ' + str(d['open_price']) + ', leverage: ' + str(int(d['leverage'])))
                             else:
                                 if (d['position'] != 'close'):
                                     d['coin2_balance'] = d['coin2_balance'] * (1 + dif2)
@@ -324,7 +325,7 @@ class Strategy():
                                         t2 += ', close_on_close'
                                     if (d['wait_zoom']):
                                         t2 += ', zoom ' + str(d['min_zoom']['c']) + ' ' + str(d['min_zoom']['n'])
-                                    print('strategy derivatives, ' + d['position'] + t2 + ', ' + str(d['coin2_balance']) + ' USD, investment: ' + str(d['total_investment']) + ', ' + datetime.fromtimestamp(values[i]['time']).isoformat() + ', open price: ' + str(d['open_price']) + ', leverage: ' + str(d['leverage']))
+                                    print('strategy derivatives, ' + d['position'] + t2 + ', ' + str(d['coin2_balance']) + ' USD, investment: ' + str(d['total_investment']) + ', ' + datetime.fromtimestamp(values[i]['time']).isoformat() + ', open price: ' + str(d['open_price']) + ', leverage: ' + str(int(d['leverage'])))
 
                             if (d['coin2_balance'] >= 0):
                                 if (d['coin2_balance'] <= 0.01):
