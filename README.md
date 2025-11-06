@@ -86,72 +86,88 @@ Configuración de ejemplo:
 		"last_dif_timestamp" : 0, -> En relación a lo anterior. Se usa para cuando hay diferencias de precios superiores al diferencia promedio más "dif_tolerance", pero realistas (cuando hay mucha más volatilidad de lo normal).
 
         -> Estas variables se usan cuando se elije una configuración aleatoria para la próxima estrategia durante el backtesting
-		"random_var_add_less_priority" : 1, -> Cuando la última mejor estrategia disminuyó el valor de determinada variable respecto a la anterior, se añade determinada cantidad de -1 a la lista para dar mayor probabilidad que la nueva estrategia a probar vuelva a disminuir la variable en cuestión
+		"random_var_add_less_priority" : 5, -> Cuando la última mejor estrategia disminuyó el valor de determinada variable respecto a la anterior, se añade determinada cantidad de -1 a la lista para dar mayor probabilidad que la nueva estrategia a probar vuelva a disminuir la variable en cuestión
 		"random_var_default_less_priority" : 1, -> Da mayor probabilidad (por defecto) de disminuir la variable
-		"random_var_equal_priority" : 9, -> Mantener la variable con el mismo valor
+		"random_var_equal_priority" : 14, -> Mantener la variable con el mismo valor
 		"random_var_default_more_priority" : 1, -> Aumentar la variable
-		"random_var_add_more_priority" : 1, -> Aumentar la variable luego de un aumento previo
+		"random_var_add_more_priority" : 5, -> Aumentar la variable luego de un aumento previo
 
-		"sl_s_dif" : 0.1, -> La diferencia que se aplica entre el precio actual y el stop loss en un short, en el caso de que el stop loss actual supere "sl_reduced_dif"
-		"sl_l_dif" : 0.1, -> Lo mismo pero con long
+		"sl_s_dif" : 0.1125, -> La diferencia que se aplica entre el precio actual y el stop loss en un short, en el caso de que el stop loss actual supere "sl_reduced_dif"
+		"sl_l_dif" : 0.1125, -> Lo mismo pero con long
 		"sl_dif_min" : 0.0001,
-		"sl_dif_max" : 0.1,
+		"sl_dif_max" : 0.12,
 		"sl_dif_decimals" : 4,
 
-		"m_aprox" : 0.000131, -> Determina (junto con otras variables) cuánto va a aproximarse el stop loss (con el paso del tiempo) al precio actual (en caso de haber "zoom")
+		"m_aprox_s" : 0.0113,
+		"m_aprox_l" : 0.0393,
+			 -> Determina (junto con otras variables) cuánto va a aproximarse el stop loss (con el paso del tiempo) al precio actual (en caso de haber "zoom")
 		"m_aprox_min" : 0,
-		"m_aprox_max" : 0.15,
+		"m_aprox_max" : 0.4,
 		"m_aprox_decimals" : 4,
 
-		"far_price_dif" : 0.0276, -> En 'strategy derivatives', determina la diferencia mínima que se necesita para cambiar de trade.
+		"far_price_dif_s" : 0.0036,
+		"far_price_dif_l" : 0.007,
+			-> En 'strategy derivatives', determina la diferencia mínima que se necesita para cambiar de trade.
 		"far_price_dif_min" : 0.0001,
-		"far_price_dif_max" : 0.15,
+		"far_price_dif_max" : 0.2,
 		"far_price_dif_decimals" : 4,
 
 		"min_fee" : 0.0031, -> La fee mínima que se aplicará para cada trade
-		"fee_multiplier" : 95, -> Multiplica a la volatilidad de subidas o bajadas
+		"fee_multiplier" : 65, -> Multiplica a la volatilidad de subidas o bajadas
 		"last_up_down_priority" : 20, -> La prioridad que tendrá el último movimiento del precio al momento de calcular la fee
+		"last_pl_priority" : 2, -> La prioridad del pl del trade actual respecto al promedio
 
-		"last_pl_priority" : 3, -> La prioridad del pl del trade actual respecto al promedio
-
-		"high_leverage" : 85, -> El apalancamiento máximo
+		"high_leverage_s" : 94,
+		"high_leverage_l" : 56,
+			-> El apalancamiento máximo
 		"high_leverage_min" : 1,
 		"high_leverage_max" : 100,
 		"high_leverage_decimals" : 0,
 
-		"leverage_inc" : 0.458, -> Determina (junto con otras variables) cuánto va a aumentar el apalancamiento (y el zoom) en caso de un trade exitoso (con profit)
+		"leverage_inc_s" : 0.1649,
+		"leverage_inc_l" : 0.9683,
+			-> Determina (junto con otras variables) cuánto va a aumentar el apalancamiento (y el zoom) en caso de un trade exitoso (con profit)
 		"leverage_inc_min" : 0.0001,
-		"leverage_inc_max" : 1.5,
+		"leverage_inc_max" : 2,
 		"leverage_inc_decimals" : 4,
 
-		"leverage_dec" : 0.674, -> Determina (junto con otras variables) cuánto va a decrementar el apalancamiento (y el zoom) en caso de un trade no exitoso (con pérdida)
+		"leverage_dec_s" : 0.993,
+		"leverage_dec_l" : 1.7703,
+			-> Determina (junto con otras variables) cuánto va a decrementar el apalancamiento (y el zoom) en caso de un trade no exitoso (con pérdida)
 		"leverage_dec_min" : 0.0001,
-		"leverage_dec_max" : 1.5,
+		"leverage_dec_max" : 2,
 		"leverage_dec_decimals" : 4,
 
-        "sl_initial_dif" : 0.0034, -> La diferencia que se aplica al principio entre el precio actual y el stop loss, en el caso de que el stop loss actual no supere "sl_reduced_dif"
+        "sl_initial_dif_s" : 0.03,
+        "sl_initial_dif_l" : 0.0103,
+			-> La diferencia que se aplica al principio entre el precio actual y el stop loss, en el caso de que el stop loss actual no supere "sl_reduced_dif"
 		"sl_initial_dif_min" : 0.002,
-		"sl_initial_dif_max" : 0.025,
+		"sl_initial_dif_max" : 0.03,
 		"sl_initial_dif_decimals" : 4,
 
-		"sl_reduced_dif" : 0.2126, -> Si el stop loss supera esa diferencia (respecto al stop loss inicial), procederá a usar "sl_dif"
+		"sl_reduced_dif_s" : 0.1381,
+		"sl_reduced_dif_l" : 0.083,
+			-> Si el stop loss supera esa diferencia (respecto al stop loss inicial), procederá a usar "sl_dif"
 		"sl_reduced_dif_min" : 0,
-		"sl_reduced_dif_max" : 0.2,
+		"sl_reduced_dif_max" : 0.15,
 		"sl_reduced_dif_decimals" : 4,
 
-        "okno_inc" : 0.4761, -> Determina el incremento de l_ok o l_no, ambas son acumuladores. La primera influye en el incremento apalancamiento y la segunda en el decremento del apalancamiento
+		"okno_inc_s" : 0.0132,
+		"okno_inc_l" : 0.1872,
+			-> Determina el incremento de l_ok o l_no, ambas son acumuladores. La primera influye en el incremento apalancamiento y la segunda en el decremento del apalancamiento
 		"okno_inc_min" : 0,
-		"okno_inc_max" : 0.075,
+		"okno_inc_max" : 0.2,
 		"okno_inc_decimals" : 4,
 
-        "okno_dec" : 0.4814, -> Determina el decremento de l_ok o l_no
+        "okno_dec_s" : 0.1253,
+		"okno_dec_l" : 0.0521,
+			-> Determina el decremento de l_ok o l_no
 		"okno_dec_min" : 0,
 		"okno_dec_max" : 0.2,
 		"okno_dec_decimals" : 4,
 
 		"derivatives" : [ -> Son variantes de la estrategia. Varían los momentos de entrada o salida de los trades respecto a la estrategia en cuestión.
-            {"position" : "close", "coin2_balance" : 1, "leverage" : 1, "wait_zoom" : false, "wait_far_price_dif" : true, "far_price_dif" : null, "total_investment" : 1, "open_price" : null, "close_on_close" : false},
-            {"position" : "close", "coin2_balance" : 1, "leverage" : 1, "wait_zoom" : false, "wait_far_price_dif" : true, "far_price_dif" : null, "total_investment" : 1, "open_price" : null, "close_on_close" : true},
+            {"position" : "close", "coin2_balance" : 1, "leverage" : 1, "wait_zoom" : false, "wait_far_price_dif" : true, "far_price_dif_s" : null, "far_price_dif_l" : null, "total_investment" : 1, "open_price" : null, "close_on_close" : true},
             {"position" : "close", "coin2_balance" : 1, "leverage" : 1, "wait_zoom" : false, "wait_far_price_dif" : false, "total_investment" : 1, "open_price" : null, "close_on_close" : false}
         ]
 	}

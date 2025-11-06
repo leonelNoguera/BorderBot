@@ -22,7 +22,8 @@ class Strategy():
         self.prev_pl = 0
         self.leverage_s = 1
         self.leverage_l = 1
-        self.high_leverage = 1
+        self.high_leverage_s = 1
+        self.high_leverage_l = 1
         self.l_l_ok = 0
         self.l_s_ok = 0
         self.l_l_no = 0
@@ -31,19 +32,28 @@ class Strategy():
         self.zoom_s = 0 # 0 - 1
         self.zoom_l = 0
         self.omit_aprox_count = 0
-        self.sl_s_dif = None
-        self.sl_l_dif = None
+        self.sl_s_dif = config[self.coin1 + '-' + self.coin2]['sl_s_dif']
+        self.sl_l_dif = config[self.coin1 + '-' + self.coin2]['sl_l_dif']
 
-        self.sl_reduced_dif = config[self.coin1 + '-' + self.coin2]['sl_reduced_dif']
-        self.sl_initial_dif = config[self.coin1 + '-' + self.coin2]['sl_initial_dif']
-        self.okno_inc = config[self.coin1 + '-' + self.coin2]['okno_inc']
-        self.okno_dec = config[self.coin1 + '-' + self.coin2]['okno_dec']
+        self.sl_reduced_dif_s = config[self.coin1 + '-' + self.coin2]['sl_reduced_dif_s']
+        self.sl_reduced_dif_l = config[self.coin1 + '-' + self.coin2]['sl_reduced_dif_l']
+        self.sl_initial_dif_s = config[self.coin1 + '-' + self.coin2]['sl_initial_dif_s']
+        self.sl_initial_dif_l = config[self.coin1 + '-' + self.coin2]['sl_initial_dif_l']
+        self.okno_inc_s = config[self.coin1 + '-' + self.coin2]['okno_inc_s']
+        self.okno_dec_s = config[self.coin1 + '-' + self.coin2]['okno_dec_s']
+        self.okno_inc_l = config[self.coin1 + '-' + self.coin2]['okno_inc_l']
+        self.okno_dec_l = config[self.coin1 + '-' + self.coin2]['okno_dec_l']
 
-        self.m_aprox = config[self.coin1 + '-' + self.coin2]['m_aprox']
-        self.high_leverage = config[self.coin1 + '-' + self.coin2]['high_leverage']
-        self.leverage_inc = config[self.coin1 + '-' + self.coin2]['leverage_inc']
-        self.leverage_dec = config[self.coin1 + '-' + self.coin2]['leverage_dec']
-        self.far_price_dif = config[self.coin1 + '-' + self.coin2]['far_price_dif']
+        self.m_aprox_s = config[self.coin1 + '-' + self.coin2]['m_aprox_s']
+        self.m_aprox_l = config[self.coin1 + '-' + self.coin2]['m_aprox_l']
+        self.high_leverage_s = config[self.coin1 + '-' + self.coin2]['high_leverage_s']
+        self.high_leverage_l = config[self.coin1 + '-' + self.coin2]['high_leverage_l']
+        self.leverage_inc_s = config[self.coin1 + '-' + self.coin2]['leverage_inc_s']
+        self.leverage_dec_s = config[self.coin1 + '-' + self.coin2]['leverage_dec_s']
+        self.leverage_inc_l = config[self.coin1 + '-' + self.coin2]['leverage_inc_l']
+        self.leverage_dec_l = config[self.coin1 + '-' + self.coin2]['leverage_dec_l']
+        self.far_price_dif_s = config[self.coin1 + '-' + self.coin2]['far_price_dif_s']
+        self.far_price_dif_l = config[self.coin1 + '-' + self.coin2]['far_price_dif_l']
         self.min_balance = config['min_balance']
 
         self.last_pl_priority = config[self.coin1 + '-' + self.coin2]['last_pl_priority']
@@ -62,28 +72,60 @@ class Strategy():
 
 
     def set_config(self, initial_config):
-        self.sl_reduced_dif = initial_config['sl_reduced_dif']
-        self.sl_initial_dif = initial_config['sl_initial_dif']
-        self.okno_dec = initial_config['okno_dec']
-        self.okno_inc = initial_config['okno_inc']
-        self.m_aprox = initial_config['m_aprox']
+        self.sl_reduced_dif_s = initial_config['sl_reduced_dif_s']
+        self.sl_reduced_dif_l = initial_config['sl_reduced_dif_l']
+        self.sl_initial_dif_s = initial_config['sl_initial_dif_s']
+        self.sl_initial_dif_l = initial_config['sl_initial_dif_l']
+
+        self.okno_inc_s = initial_config['okno_inc_s']
+        self.okno_dec_s = initial_config['okno_dec_s']
+        self.okno_inc_l = initial_config['okno_inc_l']
+        self.okno_dec_l = initial_config['okno_dec_l']
+
+        self.m_aprox_s = initial_config['m_aprox_s']
+        self.m_aprox_l = initial_config['m_aprox_l']
         self.sl_s_dif = initial_config['sl_s_dif']
-        self.sl_l_dif = self.sl_s_dif
-        self.NAME = 'bs,' + str(self.sl_s_dif) + ',' + str(self.m_aprox) + ',asl'
-        self.m_aprox = initial_config['m_aprox']
-        self.high_leverage = initial_config['high_leverage']
-        self.leverage_inc = initial_config['leverage_inc']
-        self.leverage_dec = initial_config['leverage_dec']
-        self.far_price_dif = initial_config['far_price_dif']
+        self.sl_l_dif = initial_config['sl_l_dif']
+        self.NAME = 'bs,' + str(self.sl_initial_dif_s) + ',' + str(self.sl_initial_dif_l)
+        self.high_leverage_s = initial_config['high_leverage_s']
+        self.high_leverage_l = initial_config['high_leverage_l']
+        self.leverage_inc_s = initial_config['leverage_inc_s']
+        self.leverage_dec_s = initial_config['leverage_dec_s']
+        self.leverage_inc_l = initial_config['leverage_inc_l']
+        self.leverage_dec_l = initial_config['leverage_dec_l']
+        self.far_price_dif_s = initial_config['far_price_dif_s']
+        self.far_price_dif_l = initial_config['far_price_dif_l']
         self.change_initial_config()
 
     def change_initial_config(self):
-        self.initial_config = json.JSONEncoder().encode({'type' : self.NAME.split(',')[0], 'sl_s_dif' : float(self.NAME.split(',')[1]), 'sl_l_dif' : float(self.NAME.split(',')[1]), 'sl_reduced_dif' : self.sl_reduced_dif, 'sl_initial_dif' : self.sl_initial_dif, 'okno_inc' : self.okno_inc, 'okno_dec' : self.okno_dec, 'm_aprox' : self.m_aprox, 'leverage_inc' : self.leverage_inc, 'leverage_dec' : self.leverage_dec, 'high_leverage' : self.high_leverage, 'far_price_dif' : self.far_price_dif})
-
+        self.initial_config = json.JSONEncoder().encode({
+            'type' : self.NAME.split(',')[0],
+            'sl_s_dif' : self.sl_s_dif,
+            'sl_l_dif' : self.sl_l_dif,
+            'sl_reduced_dif_s' : self.sl_reduced_dif_s,
+            'sl_reduced_dif_l' : self.sl_reduced_dif_l,
+            'sl_initial_dif_s' : self.sl_initial_dif_s,
+            'sl_initial_dif_l' : self.sl_initial_dif_l,
+            'okno_inc_s' : self.okno_inc_s,
+            'okno_dec_s' : self.okno_dec_s,
+            'okno_inc_l' : self.okno_inc_l,
+            'okno_dec_l' : self.okno_dec_l,
+            'm_aprox_s' : self.m_aprox_s,
+            'm_aprox_l' : self.m_aprox_l,
+            'leverage_inc_s' : self.leverage_inc_s,
+            'leverage_dec_s' : self.leverage_dec_s,
+            'leverage_inc_l' : self.leverage_inc_l,
+            'leverage_dec_l' : self.leverage_dec_l,
+            'high_leverage_s' : self.high_leverage_s,
+            'high_leverage_l' : self.high_leverage_l,
+            'far_price_dif_s' : self.far_price_dif_s,
+            'far_price_dif_l' : self.far_price_dif_l
+        })
         self.derivatives = self.config[self.coin1 + '-' + self.coin2]['derivatives']
         for i in range(len(self.derivatives)):
             if (self.derivatives[i]['wait_far_price_dif']):
-                self.derivatives[i]['far_price_dif'] = self.far_price_dif
+                self.derivatives[i]['far_price_dif_s'] = self.far_price_dif_s
+                self.derivatives[i]['far_price_dif_l'] = self.far_price_dif_l
 
     def change_status(self, values, i, fee_short, fee_long):
         """
@@ -107,9 +149,9 @@ class Strategy():
 
         if ((not self.omit) and ((not self.stop_loss) or (self.stop_loss < 0))):
             if (self.trade['type'] == 'short'):
-                self.stop_loss = values[i]['price'] * (1 + (self.sl_initial_dif))
+                self.stop_loss = values[i]['price'] * (1 + (self.sl_initial_dif_s))
             if (self.trade['type'] == 'long'):
-                self.stop_loss = values[i]['price'] * (1 - (self.sl_initial_dif))
+                self.stop_loss = values[i]['price'] * (1 - (self.sl_initial_dif_l))
         if (not self.omit):
             if (self.trade['prev_type'] != self.trade['type']):
                 self.trade['time'] = float(values[i]['time'])
@@ -155,25 +197,43 @@ class Strategy():
                                 ((self.trade['type'] == 'long') and (self.trade['price'] < (self.trade['prev_price'] * (1 - fee_short)))) or
                                 ((self.trade['type'] == 'short') and (self.trade['price'] > (self.trade['prev_price'] * (1 + fee_long))))
                             ):
-                                l_no -= self.okno_dec
+                                if (self.trade['type'] == 'short'):
+                                    l_no -= self.okno_dec_l
+                                    l_ok += self.okno_inc_l
+                                else:
+                                    l_no -= self.okno_dec_s
+                                    l_ok += self.okno_inc_s
                                 if (l_no < 0):
                                     l_no = 0
-                                l_ok += self.okno_inc
                                 stage = (((dividend / divisor) - 1) / fee2) - 1
-                                inc = self.leverage_inc * stage * (1.01 ** (1 + l_ok))
+                                li = self.leverage_inc_s
+                                if (self.trade['type'] == 'short'):
+                                    li = self.leverage_inc_l
+                                inc = li * stage * (1.01 ** (1 + l_ok))
                                 leverage2 += inc
-                                if (leverage2 > self.high_leverage):
-                                    leverage2 = self.high_leverage
+                                high_leverage = self.high_leverage_l
+                                if (self.trade['type'] == 'long'):
+                                    high_leverage = self.high_leverage_s
+                                if (leverage2 > high_leverage):
+                                    leverage2 = high_leverage
                                 zoom2 += (inc / 100)
                                 if (zoom2 > 1):
                                     zoom2 = 1
                             else:
-                                l_ok -= self.okno_dec
+                                if (self.trade['type'] == 'long'):
+                                    l_ok -= self.okno_dec_s
+                                    l_no += self.okno_inc_s
+                                else:
+                                    l_ok -= self.okno_dec_l
+                                    l_no += self.okno_inc_l
                                 if (l_ok < 0):
                                     l_ok = 0
-                                l_no += self.okno_inc
+
                                 stage = ((divisor / (dividend * (1 - fee2))) - 1) / fee2
-                                dec = self.leverage_dec * stage * (1.01 ** (1 + l_no))
+                                ld = self.leverage_dec_s
+                                if (self.trade['type'] == 'short'):
+                                    ld = self.leverage_dec_l
+                                dec = ld * stage * (1.01 ** (1 + l_no))
 
                                 leverage2 -= dec
                                 if (int(leverage2) <= 0):
@@ -199,16 +259,17 @@ class Strategy():
                 self.trade['prev_type'] = self.trade['type']
                 self.omit_aprox_count = 0
 
+            # Cambio de trade, de ser necesario.
             if (self.stop_loss and (((self.trade['type'] == 'long') and (values[i]['price'] <= self.stop_loss)) or ((self.trade['type'] == 'short') and (values[i]['price'] >= self.stop_loss)))):
                 self.far_price = values[i]['price']
                 self.trade['prev_price'] = self.trade['price']
                 self.trade['price'] = values[i]['price']
                 if (self.trade['type'] == 'long'):
                     self.trade['type'] = 'short'
-                    self.stop_loss = values[i]['price'] * (1 + (self.sl_initial_dif))
+                    self.stop_loss = values[i]['price'] * (1 + (self.sl_initial_dif_s))
                 else:
                     self.trade['type'] = 'long'
-                    self.stop_loss = values[i]['price'] * (1 - (self.sl_initial_dif))
+                    self.stop_loss = values[i]['price'] * (1 - (self.sl_initial_dif_l))
 
             if (not self.far_price):
                 self.far_price = values[i]['price']
@@ -278,11 +339,16 @@ class Strategy():
                                 else:
                                     if (d['close_on_close']):
                                         close_position = True
+                            fpd = None
+                            if (d['wait_far_price_dif']):
+                                fpd = d['far_price_dif_l']
+                                if (self.trade['type'] == 'short'):
+                                    fpd = d['far_price_dif_s']
                             if (((not d['wait_zoom']) or (((c == '>') and (zoom > n)) or ((c == '>=') and (zoom >= n)))) and not close_position):
                                 fd = self.far_price / self.trade['price']
                                 if (self.trade['type'] == 'short'):
                                     fd = self.trade['price'] / self.far_price
-                                if ((not d['wait_far_price_dif']) or (fd >= (1 + d['far_price_dif']))):
+                                if ((not d['wait_far_price_dif']) or (fd >= (1 + fpd))):
                                     if (d['position'] != self.trade['type']):
                                         if (d['position'] != 'close'):
                                             c2 = d['coin2_balance'] * (1 + dif2)
@@ -308,19 +374,19 @@ class Strategy():
                                         d['open_price'] = values[i]['price']
                                         t2 = ''
                                         if (d['wait_far_price_dif']):
-                                            t2 += ', far_price_dif: ' + str(d['far_price_dif'])
+                                            t2 += ', far_price_dif: ' + str(fpd)
                                         if (d['close_on_close']):
                                             t2 += ', close_on_close'
                                         if (d['wait_zoom']):
                                             t2 += ', zoom ' + str(d['min_zoom']['c']) + ' ' + str(d['min_zoom']['n'])
-                                        print('strategy derivatives, ' + d['position'] + t2 + ', ' + str(d['coin2_balance']) + ' USD, investment: ' + str(d['total_investment']) + ', ' + datetime.fromtimestamp(values[i]['time']).isoformat() + ', open price: ' + str(d['open_price']) + ', leverage: ' + str(int(d['leverage'])))
+                                        print('strategy derivatives, ' + d['position'] + t2 + ', ' + str(d['coin2_balance']) + ' USD, investment: ' + str(d['total_investment']) + ', ' + datetime.fromtimestamp(values[i]['time']).isoformat() + ', open price: ' + str(d['open_price']) + ', leverage: ' + str(d['leverage']))
                             else:
                                 if (d['position'] != 'close'):
                                     d['coin2_balance'] = d['coin2_balance'] * (1 + dif2)
                                     d['position'] = 'close'
                                     t2 = ''
                                     if (d['wait_far_price_dif']):
-                                        t2 += ', far_price_dif: ' + str(d['far_price_dif'])
+                                        t2 += ', far_price_dif: ' + str(fpd)
                                     if (d['close_on_close']):
                                         t2 += ', close_on_close'
                                     if (d['wait_zoom']):
@@ -339,42 +405,63 @@ class Strategy():
                             self.pl = (self.prev_pl + (dif * self.last_pl_priority)) / (self.last_pl_priority + 1)
 
                         if (m > l): # Tendría ganancia con ese stop loss.
-                            tmp_l_no -= self.okno_dec
+                            if (self.trade['type'] == 'short'):
+                                tmp_l_no -= self.okno_dec_s
+                            else:
+                                tmp_l_no -= self.okno_dec_l
                             if ((l_no + tmp_l_no) < 0):
                                 tmp_l_no = 0
-                            tmp_l_ok += self.okno_inc
+                            if (self.trade['type'] == 'short'):
+                                tmp_l_ok += self.okno_inc_s
+                            else:
+                                tmp_l_ok += self.okno_inc_l
                             stage = (((dividend / divisor) - 1) / fee) - 1
-                            inc = self.leverage_inc * stage * (1.01 ** (1 + ((l_ok + tmp_l_ok) * 0.255)))
+                            li = self.leverage_inc_s
+                            if (self.trade['type'] == 'short'):
+                                li = self.leverage_inc_l
+                            inc = li * stage * (1.01 ** (1 + ((l_ok + tmp_l_ok) * 0.255)))
 
                             tmp_zoom += (inc / 100)
                             if ((zoom + tmp_zoom) > 1):
                                 tmp_zoom = 1 - zoom
                         else:
-                            tmp_l_ok -= self.okno_dec
+                            if (self.trade['type'] == 'short'):
+                                tmp_l_ok -= self.okno_dec_s
+                            else:
+                                tmp_l_ok -= self.okno_dec_l
                             if ((l_ok + tmp_l_ok) < 0):
                                 tmp_l_ok = 0
-                            tmp_l_no += self.okno_inc
+                            if (self.trade['type'] == 'short'):
+                                tmp_l_no += self.okno_inc_s
+                            else:
+                                tmp_l_no += self.okno_inc_l
                             stage = ((divisor / (dividend * (1 - fee))) - 1) / fee
-                            dec = self.leverage_dec * stage * (1.01 ** (1 + ((l_no + tmp_l_no) * 0.255)))
+                            ld = self.leverage_dec_l
+                            if (self.trade['type'] == 'short'):
+                                ld = self.leverage_dec_s
+                            dec = ld * stage * (1.01 ** (1 + ((l_no + tmp_l_no) * 0.255)))
                             tmp_zoom -= (dec / 100)
                             if ((zoom + tmp_zoom) < 0):
                                 tmp_zoom = 0
                     zoom_p = ((zoom + tmp_zoom) + zoom2) * 0.5
-                    aprox = self.m_aprox * zoom_p
+                    a = self.m_aprox_s
+                    if (self.trade['type'] == 'long'):
+                        a = self.m_aprox_l
+                    aprox = a * zoom_p
                     if (
                         (
                             (trade_type == 'long') and
                             (
                                 (values[i]['price'] > (self.trade['price'] * (1 + fee))) or
                                 (
-                                    values[i]['price'] < (self.trade['price'] * (1 - (self.sl_initial_dif * 0.5)))
+                                    values[i]['price'] < (self.trade['price'] * (1 - (self.sl_initial_dif_l * 0.5)))
                                 )
                             )
                         ) or
 
-                        ((trade_type == 'short') and ((values[i]['price'] < (self.trade['price'] * (1 - fee))) or (values[i]['price'] < (self.trade['price'] * (1 + (self.sl_initial_dif * 0.5))))))
+                        ((trade_type == 'short') and ((values[i]['price'] < (self.trade['price'] * (1 - fee))) or (values[i]['price'] < (self.trade['price'] * (1 + (self.sl_initial_dif_s * 0.5))))))
                     ):
-                        aprox = self.m_aprox * zoom_p * (((values[i]['time'] - float(self.trade['time'])) / self.timer) - self.omit_aprox_count)
+                        aprox = a * zoom_p * (((values[i]['time'] - float(self.trade['time'])) / self.timer) - self.omit_aprox_count)
                     else:
                         self.omit_aprox_count += (values[i]['time'] - values[i - 1]['time']) / self.timer
 
@@ -382,12 +469,14 @@ class Strategy():
                         self.far_price = values[i]['price']
                     sl = self.stop_loss
 
-                    sl2 = self.trade['price'] * (1 - self.sl_initial_dif + self.sl_reduced_dif)
+                    sl2 = self.trade['price'] * (1 - self.sl_initial_dif_l + self.sl_reduced_dif_l)
                     if (trade_type == 'short'):
-                        sl2 = self.trade['price'] * (1 + self.sl_initial_dif - self.sl_reduced_dif)
+                        sl2 = self.trade['price'] * (1 + self.sl_initial_dif_s - self.sl_reduced_dif_s)
 
                     if (((trade_type == 'long') and (sl < sl2)) or ((trade_type == 'short') and (sl > sl2))): #No está en la zona de break even o mejor.
-                        sl_p = self.sl_initial_dif
+                        sl_p = self.sl_initial_dif_s
+                        if (trade_type == 'long'):
+                            sl_p = self.sl_initial_dif_l
 
                     sl2 = self.far_price * (1 - sl_p + aprox)
                     if (trade_type == 'short'):

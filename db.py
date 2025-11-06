@@ -48,7 +48,7 @@ class Db(object):
 				best_initial_config = '{}'
 				if (cs == 'y'):
 					# Busca la última estrategia ready_to_use y con mayor pl.
-					statement = 'SELECT last_timestamp, pl, initial_config, comp_initial_config FROM strategies WHERE (timer = ' + str(timer) + ' && coin1 = "' + pair[0] + '" && coin2 = "' + pair[1] + '" AND ready_to_use) ORDER BY comp_last_timestamp DESC, last_timestamp DESC, pl DESC LIMIT 1;'
+					statement = 'SELECT last_timestamp, pl, initial_config, comp_initial_config FROM strategies WHERE (timer = ' + str(timer) + ' && coin1 = "' + pair[0] + '" && coin2 = "' + pair[1] + '" AND ready_to_use) ORDER BY last_timestamp DESC LIMIT 1;'
 					cur = self.conn.cursor()
 					cur.execute(statement)
 					rows = cur.fetchall()
@@ -209,9 +209,9 @@ class Db(object):
 
 	def set_strategy(self, row, v = None, change_comp = False):
 		if (type(row) == type(())):
-			init_timestamp, name, timer, derivatives, stop_loss, trade_type, trade_timestamp, trade_prev_timestamp, trade_price, trade_prev_price, aprox_s, aprox_r, last_timestamp, leverage_s, leverage_l, pl, pl_c, prev_pl, l_l_ok, l_s_ok, l_l_no, l_s_no, zoom_s, zoom_l, far_price, initial_config = row
+			init_timestamp, name, timer, derivatives, stop_loss, trade_type, trade_timestamp, trade_prev_timestamp, trade_price, trade_prev_price, last_timestamp, leverage_s, leverage_l, pl, pl_c, prev_pl, l_l_ok, l_s_ok, l_l_no, l_s_no, zoom_s, zoom_l, far_price, initial_config = row
 			if (change_comp):
-				init_timestamp, name, timer, derivatives, stop_loss, trade_type, trade_timestamp, trade_prev_timestamp, trade_price, trade_prev_price, aprox_s, aprox_r, last_timestamp, leverage_s, leverage_l, pl, pl_c, prev_pl, l_l_ok, l_s_ok, l_l_no, l_s_no, zoom_s, zoom_l, far_price, initial_config, comp_pl, comp_initial_config, comp_last_timestamp, comp_prev_pl = row
+				init_timestamp, name, timer, derivatives, stop_loss, trade_type, trade_timestamp, trade_prev_timestamp, trade_price, trade_prev_price, last_timestamp, leverage_s, leverage_l, pl, pl_c, prev_pl, l_l_ok, l_s_ok, l_l_no, l_s_no, zoom_s, zoom_l, far_price, initial_config, comp_pl, comp_initial_config, comp_last_timestamp, comp_prev_pl = row
 
 			v = strategy.Strategy(self, timer, self.coin1, self.coin2, config = self.config, name = name, mode = 'real_time', socket = self.socket, save = False)
 
@@ -226,8 +226,6 @@ class Db(object):
 			v.trade['prev_price'] = trade_prev_price
 			v.leverage_s = leverage_s
 			v.leverage_l = leverage_l
-			v.aprox_s = aprox_s
-			v.aprox_r = aprox_r
 			v.pl = pl
 			v.pl_c = pl_c
 			v.prev_pl = prev_pl
@@ -336,14 +334,11 @@ class Db(object):
 					pass
 			msg_in['initial_config'] = json.JSONDecoder().decode(msg_in['initial_config'])
 
-			v = strategy.Strategy(self, timer, coin1, coin2, config = config2, name = 'bs,' + str(msg_in['initial_config']['sl_s_dif']) + ',' + str(msg_in['initial_config']['m_aprox']) + ',asl', mode = self.mode, socket = self.socket, save = False)
+			v = strategy.Strategy(self, timer, coin1, coin2, config = config2, name = 'bs,' + str(msg_in['initial_config']['sl_initial_dif_s']) + ',' + str(msg_in['initial_config']['sl_initial_dif_l']), mode = self.mode, socket = self.socket, save = False)
 			self.set_strategy(msg_in, v, change_comp = True)
 			m = self.set_psc(m, msg_in)
 		else:
-			s = config2[coin1 + '-' + coin2]['sl_s_dif']
-			m_aprox = config2[coin1 + '-' + coin2]['m_aprox']
-
-			v = strategy.Strategy(self, timer, coin1, coin2, config = config2, name = 'bs,' + str(s) + ',' + str(m_aprox) + ',asl', mode = self.mode, socket = self.socket, save = False)
+			v = strategy.Strategy(self, timer, coin1, coin2, config = config2, name = 'bs,' + str(config2[coin1 + '-' + coin2]['sl_initial_dif_s']) + ',' + str(config2[coin1 + '-' + coin2]['sl_initial_dif_l']), mode = self.mode, socket = self.socket, save = False)
 
 			prev_status = {}
 			try:
@@ -364,7 +359,7 @@ class Db(object):
 				new_initial_config = ''
 				# Busca la última estrategia ready_to_use y con mayor pl.
 				d_comp = None
-				statement = 'SELECT last_timestamp, pl, initial_config, comp_initial_config, derivatives FROM strategies WHERE (timer = ' + str(timer) + ' && coin1 = "' + coin1 + '" && coin2 = "' + coin2 + '" AND ready_to_use) ORDER BY pl DESC LIMIT 1;'
+				statement = 'SELECT last_timestamp, pl, initial_config, comp_initial_config, derivatives FROM strategies WHERE (timer = ' + str(timer) + ' && coin1 = "' + coin1 + '" && coin2 = "' + coin2 + '" AND ready_to_use) ORDER BY last_timestamp DESC LIMIT 1;'
 				cur.execute(statement)
 				rows = cur.fetchall()
 				if (rows):
@@ -381,7 +376,7 @@ class Db(object):
 									new_initial_config = initial_config
 								else:
 									new_initial_config = comp_initial_config
-				dif_initial_config = {'sl_s_dif' : 0, 'sl_l_dif' : 0, 'sl_reduced_dif' : 0, 'sl_initial_dif' : 0, 'okno_inc' : 0, 'okno_dec' : 0, 'm_aprox' : 0, 'leverage_inc' : 0, 'leverage_dec' : 0, 'high_leverage' : 0, 'far_price_dif' : 0}
+				dif_initial_config = {'sl_s_dif' : 0, 'sl_l_dif' : 0, 'sl_reduced_dif_s' : 0, 'sl_reduced_dif_l' : 0, 'sl_initial_dif_s' : 0, 'sl_initial_dif_l' : 0, 'okno_inc_s' : 0, 'okno_inc_l' : 0, 'okno_dec_s' : 0, 'okno_dec_l' : 0, 'm_aprox_s' : 0, 'm_aprox_l' : 0, 'leverage_inc_s' : 0, 'leverage_inc_l' : 0, 'leverage_dec_s' : 0, 'leverage_dec_l' : 0, 'high_leverage_s' : 0, 'high_leverage_l' : 0, 'far_price_dif_s' : 0, 'far_price_dif_l' : 0}
 				if (new_initial_config):
 					statement = 'SELECT name, initial_config, comp_initial_config, derivatives FROM strategies WHERE (timer = ' + str(timer) + ' && coin1 = "' + coin1 + '" && coin2 = "' + coin2 + '" AND ready_to_use AND initial_config = \'' + new_initial_config + '\') LIMIT 1;'
 					cur = self.conn.cursor()
@@ -404,7 +399,7 @@ class Db(object):
 								max_d_comp = (d_comp[i]['coin2_balance'] - d_comp[i]['total_investment'])
 
 						if (comp_initial_config):
-							dif_initial_config = {'sl_s_dif' : 0, 'sl_l_dif' : 0, 'sl_reduced_dif' : 0, 'sl_initial_dif' : 0, 'okno_inc' : 0, 'okno_dec' : 0, 'm_aprox' : 0, 'leverage_inc' : 0, 'leverage_dec' : 0, 'high_leverage' : 0, 'far_price_dif' : 0}
+							dif_initial_config = {'sl_s_dif' : 0, 'sl_l_dif' : 0, 'sl_reduced_dif_s' : 0, 'sl_reduced_dif_l' : 0, 'sl_initial_dif_s' : 0, 'sl_initial_dif_l' : 0, 'okno_inc_s' : 0, 'okno_inc_l' : 0, 'okno_dec_s' : 0, 'okno_dec_l' : 0, 'm_aprox_s' : 0, 'm_aprox_l' : 0, 'leverage_inc_s' : 0, 'leverage_inc_l' : 0, 'leverage_dec_s' : 0, 'leverage_dec_l' : 0, 'high_leverage_s' : 0, 'high_leverage_l' : 0, 'far_price_dif_s' : 0, 'far_price_dif_l' : 0}
 							keys = list(initial_config.keys())[1:]
 							for k in keys:
 								r = 0
@@ -414,37 +409,43 @@ class Db(object):
 									r = 1
 
 								# Este se calcula diferente debido a que es una variable que no influye en 'pl', por lo cual no tendría una correlación.
-								if ((k == 'far_price_dif') and (max_d < max_d_comp)):
+								if (((k == 'far_price_dif_s') or (k == 'far_price_dif_l')) and (max_d < max_d_comp)):
 									r = r * -1
 
 								dif_initial_config[k] = r
 
-				prev_leverage_inc = v.leverage_inc
-				prev_leverage_dec = v.leverage_dec
 				rows = True
 				while (rows):
 					v.set_config(json.JSONDecoder().decode(v.initial_config))
-					v.sl_reduced_dif = self.random_var(v.sl_reduced_dif, config2[coin1 + '-' + coin2]['sl_reduced_dif_min'], config2[coin1 + '-' + coin2]['sl_reduced_dif_max'], config2[coin1 + '-' + coin2]['sl_reduced_dif_decimals'], dif_initial_config['sl_reduced_dif'])
-					v.sl_initial_dif = self.random_var(v.sl_initial_dif, config2[coin1 + '-' + coin2]['sl_initial_dif_min'], config2[coin1 + '-' + coin2]['sl_initial_dif_max'], config2[coin1 + '-' + coin2]['sl_initial_dif_decimals'], dif_initial_config['sl_initial_dif'])
-					v.okno_dec = self.random_var(v.okno_dec, config2[coin1 + '-' + coin2]['okno_dec_min'], config2[coin1 + '-' + coin2]['okno_dec_max'], config2[coin1 + '-' + coin2]['okno_dec_decimals'], dif_initial_config['okno_dec'])
-					v.okno_inc = self.random_var(v.okno_inc, config2[coin1 + '-' + coin2]['okno_inc_min'], config2[coin1 + '-' + coin2]['okno_inc_max'], config2[coin1 + '-' + coin2]['okno_inc_decimals'], dif_initial_config['okno_inc'])
-					v.m_aprox = self.random_var(v.m_aprox, config2[coin1 + '-' + coin2]['m_aprox_min'], config2[coin1 + '-' + coin2]['m_aprox_max'], config2[coin1 + '-' + coin2]['m_aprox_decimals'], dif_initial_config['m_aprox'])
-					v.sl_s_dif = self.random_var(v.sl_s_dif, config2[coin1 + '-' + coin2]['sl_dif_min'], config2[coin1 + '-' + coin2]['sl_dif_max'], config2[coin1 + '-' + coin2]['sl_dif_decimals'], dif_initial_config['sl_s_dif'])
-					v.sl_l_dif = v.sl_s_dif
-					v.high_leverage = int(self.random_var(v.high_leverage, config2[coin1 + '-' + coin2]['high_leverage_min'], config2[coin1 + '-' + coin2]['high_leverage_max'], config2[coin1 + '-' + coin2]['high_leverage_decimals'], dif_initial_config['high_leverage']))
-					#print(v.far_price_dif)
-					v.far_price_dif = self.random_var(v.far_price_dif, config2[coin1 + '-' + coin2]['far_price_dif_min'], config2[coin1 + '-' + coin2]['far_price_dif_max'], config2[coin1 + '-' + coin2]['far_price_dif_decimals'], dif_initial_config['far_price_dif'])
-					#input(v.far_price_dif)
-					dif_ok = False
-					while (not dif_ok):
-						v.leverage_inc = prev_leverage_inc
-						v.leverage_dec = prev_leverage_dec
-						v.leverage_inc = self.random_var(v.leverage_inc, config2[coin1 + '-' + coin2]['leverage_inc_min'], config2[coin1 + '-' + coin2]['leverage_inc_max'], config2[coin1 + '-' + coin2]['leverage_inc_decimals'], dif_initial_config['leverage_inc'])
-						v.leverage_dec = self.random_var(v.leverage_dec, config2[coin1 + '-' + coin2]['leverage_dec_min'], config2[coin1 + '-' + coin2]['leverage_dec_max'], config2[coin1 + '-' + coin2]['leverage_dec_decimals'], dif_initial_config['leverage_dec'])
-						if (v.leverage_inc < v.leverage_dec):
-							dif_ok = True
 
-					v.NAME = 'bs,' + str(v.sl_s_dif) + ',' + str(v.m_aprox) + ',asl'
+					v.sl_reduced_dif_s = self.random_var(v.sl_reduced_dif_s, config2[coin1 + '-' + coin2]['sl_reduced_dif_min'], config2[coin1 + '-' + coin2]['sl_reduced_dif_max'], config2[coin1 + '-' + coin2]['sl_reduced_dif_decimals'], dif_initial_config['sl_reduced_dif_s'])
+					v.sl_reduced_dif_l = self.random_var(v.sl_reduced_dif_l, config2[coin1 + '-' + coin2]['sl_reduced_dif_min'], config2[coin1 + '-' + coin2]['sl_reduced_dif_max'], config2[coin1 + '-' + coin2]['sl_reduced_dif_decimals'], dif_initial_config['sl_reduced_dif_l'])
+					v.sl_initial_dif_s = self.random_var(v.sl_initial_dif_s, config2[coin1 + '-' + coin2]['sl_initial_dif_min'], config2[coin1 + '-' + coin2]['sl_initial_dif_max'], config2[coin1 + '-' + coin2]['sl_initial_dif_decimals'], dif_initial_config['sl_initial_dif_s'])
+					v.sl_initial_dif_l = self.random_var(v.sl_initial_dif_l, config2[coin1 + '-' + coin2]['sl_initial_dif_min'], config2[coin1 + '-' + coin2]['sl_initial_dif_max'], config2[coin1 + '-' + coin2]['sl_initial_dif_decimals'], dif_initial_config['sl_initial_dif_l'])
+
+					v.okno_dec_s = self.random_var(v.okno_dec_s, config2[coin1 + '-' + coin2]['okno_dec_min'], config2[coin1 + '-' + coin2]['okno_dec_max'], config2[coin1 + '-' + coin2]['okno_dec_decimals'], dif_initial_config['okno_dec_s'])
+					v.okno_inc_s = self.random_var(v.okno_inc_s, config2[coin1 + '-' + coin2]['okno_inc_min'], config2[coin1 + '-' + coin2]['okno_inc_max'], config2[coin1 + '-' + coin2]['okno_inc_decimals'], dif_initial_config['okno_inc_s'])
+					v.okno_dec_l = self.random_var(v.okno_dec_l, config2[coin1 + '-' + coin2]['okno_dec_min'], config2[coin1 + '-' + coin2]['okno_dec_max'], config2[coin1 + '-' + coin2]['okno_dec_decimals'], dif_initial_config['okno_dec_l'])
+					v.okno_inc_l = self.random_var(v.okno_inc_l, config2[coin1 + '-' + coin2]['okno_inc_min'], config2[coin1 + '-' + coin2]['okno_inc_max'], config2[coin1 + '-' + coin2]['okno_inc_decimals'], dif_initial_config['okno_inc_l'])
+
+					v.m_aprox_s = self.random_var(v.m_aprox_s, config2[coin1 + '-' + coin2]['m_aprox_min'], config2[coin1 + '-' + coin2]['m_aprox_max'], config2[coin1 + '-' + coin2]['m_aprox_decimals'], dif_initial_config['m_aprox_s'])
+					v.m_aprox_l = self.random_var(v.m_aprox_l, config2[coin1 + '-' + coin2]['m_aprox_min'], config2[coin1 + '-' + coin2]['m_aprox_max'], config2[coin1 + '-' + coin2]['m_aprox_decimals'], dif_initial_config['m_aprox_l'])
+
+					v.sl_s_dif = self.random_var(v.sl_s_dif, config2[coin1 + '-' + coin2]['sl_dif_min'], config2[coin1 + '-' + coin2]['sl_dif_max'], config2[coin1 + '-' + coin2]['sl_dif_decimals'], dif_initial_config['sl_s_dif'])
+					v.sl_s_dif = self.random_var(v.sl_l_dif, config2[coin1 + '-' + coin2]['sl_dif_min'], config2[coin1 + '-' + coin2]['sl_dif_max'], config2[coin1 + '-' + coin2]['sl_dif_decimals'], dif_initial_config['sl_l_dif'])
+
+					v.high_leverage_s = int(self.random_var(v.high_leverage_s, config2[coin1 + '-' + coin2]['high_leverage_min'], config2[coin1 + '-' + coin2]['high_leverage_max'], config2[coin1 + '-' + coin2]['high_leverage_decimals'], dif_initial_config['high_leverage_s']))
+					v.high_leverage_l = int(self.random_var(v.high_leverage_l, config2[coin1 + '-' + coin2]['high_leverage_min'], config2[coin1 + '-' + coin2]['high_leverage_max'], config2[coin1 + '-' + coin2]['high_leverage_decimals'], dif_initial_config['high_leverage_l']))
+
+					v.far_price_dif_s = self.random_var(v.far_price_dif_s, config2[coin1 + '-' + coin2]['far_price_dif_min'], config2[coin1 + '-' + coin2]['far_price_dif_max'], config2[coin1 + '-' + coin2]['far_price_dif_decimals'], dif_initial_config['far_price_dif_s'])
+					v.far_price_dif_l = self.random_var(v.far_price_dif_l, config2[coin1 + '-' + coin2]['far_price_dif_min'], config2[coin1 + '-' + coin2]['far_price_dif_max'], config2[coin1 + '-' + coin2]['far_price_dif_decimals'], dif_initial_config['far_price_dif_l'])
+
+					v.leverage_inc_s = self.random_var(v.leverage_inc_s, config2[coin1 + '-' + coin2]['leverage_inc_min'], config2[coin1 + '-' + coin2]['leverage_inc_max'], config2[coin1 + '-' + coin2]['leverage_inc_decimals'], dif_initial_config['leverage_inc_s'])
+					v.leverage_dec_s = self.random_var(v.leverage_dec_s, config2[coin1 + '-' + coin2]['leverage_dec_min'], config2[coin1 + '-' + coin2]['leverage_dec_max'], config2[coin1 + '-' + coin2]['leverage_dec_decimals'], dif_initial_config['leverage_dec_s'])
+					v.leverage_inc_l = self.random_var(v.leverage_inc_l, config2[coin1 + '-' + coin2]['leverage_inc_min'], config2[coin1 + '-' + coin2]['leverage_inc_max'], config2[coin1 + '-' + coin2]['leverage_inc_decimals'], dif_initial_config['leverage_inc_l'])
+					v.leverage_dec_l = self.random_var(v.leverage_dec_l, config2[coin1 + '-' + coin2]['leverage_dec_min'], config2[coin1 + '-' + coin2]['leverage_dec_max'], config2[coin1 + '-' + coin2]['leverage_dec_decimals'], dif_initial_config['leverage_dec_l'])
+
+					v.NAME = 'bs,' + str(v.sl_initial_dif_s) + ',' + str(v.sl_initial_dif_l)
 
 					v.change_initial_config()
 					statement = 'SELECT initial_config FROM strategies WHERE (timer = ' + str(timer) + ' && coin1 = "' + coin1 + '" && coin2 = "' + coin2 + '" AND initial_config = \'' + v.initial_config + '\');'
@@ -452,7 +453,7 @@ class Db(object):
 					rows = cur.fetchall()
 			print('Se usará una estrategia con: ' + v.initial_config)
 			# Busca la última estrategia ready_to_use y con mayor pl, para comparar con la estrategia nueva.
-			statement = 'SELECT last_timestamp, pl, initial_config, comp_initial_config FROM strategies WHERE (timer = ' + str(timer) + ' && coin1 = "' + coin1 + '" && coin2 = "' + coin2 + '" AND ready_to_use) ORDER BY comp_last_timestamp DESC, last_timestamp DESC LIMIT 1;'
+			statement = 'SELECT last_timestamp, pl, initial_config, comp_initial_config FROM strategies WHERE (timer = ' + str(timer) + ' && coin1 = "' + coin1 + '" && coin2 = "' + coin2 + '" AND ready_to_use) ORDER BY last_timestamp DESC LIMIT 1;'
 			cur.execute(statement)
 			rows = cur.fetchall()
 			if (rows):
@@ -527,7 +528,7 @@ class Db(object):
 
 		new_initial_config = ''
 		# Busca la última estrategia ready_to_use y con mayor pl.
-		statement = 'SELECT last_timestamp, pl, initial_config, comp_initial_config FROM strategies WHERE (timer = ' + str(timer) + ' && coin1 = "' + coin1 + '" && coin2 = "' + coin2 + '" AND ready_to_use) ORDER BY comp_last_timestamp DESC, last_timestamp DESC, pl DESC LIMIT 1;'
+		statement = 'SELECT last_timestamp, pl, initial_config, comp_initial_config FROM strategies WHERE (timer = ' + str(timer) + ' && coin1 = "' + coin1 + '" && coin2 = "' + coin2 + '" AND ready_to_use) ORDER BY last_timestamp DESC LIMIT 1;'
 		cur.execute(statement)
 		rows = cur.fetchall()
 		if (rows):
@@ -576,7 +577,7 @@ class Db(object):
 				cur.execute(statement)
 				self.conn.commit()
 
-			statement = 'SELECT init_timestamp, name, timer, derivatives, stop_loss, trade_type, trade_timestamp, trade_prev_timestamp, trade_price, trade_prev_price, aprox_s, aprox_r, last_timestamp, leverage_s, leverage_l, pl, pl_c, prev_pl, l_l_ok, l_s_ok, l_l_no, l_s_no, zoom_s, zoom_l, far_price, initial_config FROM ' + t + 'strategies WHERE (timer = ' + str(timer) + ' && coin1 = "' + coin1 + '" && coin2 = "' + coin2 + '" AND initial_config = \'' + new_initial_config + '\') ORDER BY last_timestamp DESC LIMIT 1;'
+			statement = 'SELECT init_timestamp, name, timer, derivatives, stop_loss, trade_type, trade_timestamp, trade_prev_timestamp, trade_price, trade_prev_price, last_timestamp, leverage_s, leverage_l, pl, pl_c, prev_pl, l_l_ok, l_s_ok, l_l_no, l_s_no, zoom_s, zoom_l, far_price, initial_config FROM ' + t + 'strategies WHERE (timer = ' + str(timer) + ' && coin1 = "' + coin1 + '" && coin2 = "' + coin2 + '" AND initial_config = \'' + new_initial_config + '\') ORDER BY last_timestamp DESC LIMIT 1;'
 			cur.execute(statement)
 			rows = cur.fetchall()
 			if (rows):

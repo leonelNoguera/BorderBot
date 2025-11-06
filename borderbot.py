@@ -314,7 +314,7 @@ class BorderBot(object):
                                 for d in self.strategy.derivatives:
                                     t2 = ''
                                     if (d['wait_far_price_dif']):
-                                        t2 += 'far_price_dif >= ' + str(d['far_price_dif'])
+                                        t2 += 'far_price_dif >= ' + str(d['far_price_dif_s']) + ',' + str(d['far_price_dif_l'])
                                     if (d['wait_zoom']):
                                         t2 += 'zoom ' + str(d['min_zoom']['c']) + ' ' + str(d['min_zoom']['n'])
                                     t += '\n\tstrategy derivatives, ' + d['position'] + ', ' + t2 + ', ' + str(d['coin2_balance']) + ' USD, investment: ' + str(d['total_investment']) + ', leverage: ' + str(int(d['leverage']))
@@ -339,6 +339,7 @@ class BorderBot(object):
             self.db.update_trader(self, self.mode)
             self.strategy.ready_to_use = True
             self.strategy.last_timestamp = self.strategy.db.last_price_in_list[1]
+            #input('esperando ...')
             self.db.update_strategy(self.strategy, self.mode, update_comp = False)
         else:
             print('Obteniendo precios...')
@@ -406,7 +407,7 @@ class BorderBot(object):
                                 m = self
                             )
                             if (new_strategy and (new_strategy.initial_config != self.strategy.initial_config)): # Nuevo trader.
-                                t = datetime.fromtimestamp(self.values[j]['time']).isoformat() + ' cambio de estrategia'
+                                t = datetime.fromtimestamp(self.values[j]['time']).isoformat() + ' cambio de estrategia: '
                                 t += new_strategy.initial_config + '\n'
                                 txt += t + '\n'
                                 print(t)
@@ -433,7 +434,7 @@ class BorderBot(object):
                                     for d in self.strategy.derivatives:
                                         t2 = ''
                                         if (d['wait_far_price_dif']):
-                                            t2 += 'far_price_dif >= ' + str(d['far_price_dif'])
+                                            t2 += 'far_price_dif >= ' + str(d['far_price_dif_s']) + ',' + str(d['far_price_dif_l'])
                                         if (d['wait_zoom']):
                                             t2 += 'zoom ' + str(d['min_zoom']['c']) + ' ' + str(d['min_zoom']['n'])
                                         t += '\n\tstrategy derivatives, ' + d['position'] + ', ' + t2 + ', ' + str(d['coin2_balance']) + ' USD, investment: ' + str(d['total_investment']) + ', leverage: ' + str(int(d['leverage']))
@@ -463,6 +464,10 @@ class BorderBot(object):
 
                                 max_d = 0
                                 ds = self.strategy.derivatives
+
+                                if (prev_status and ((self.coin1 + '-' + self.coin2) in prev_status.keys()) and ('derivatives' in prev_status[self.coin1 + '-' + self.coin2].keys())):
+                                    ds = prev_status[self.coin1 + '-' + self.coin2]['derivatives']
+
                                 for i in range(len(ds)):
                                     if ((ds[i]['coin2_balance'] - ds[i]['total_investment']) > (ds[max_d]['coin2_balance'] - ds[max_d]['total_investment'])):
                                         max_d = i
