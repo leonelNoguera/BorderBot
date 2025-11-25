@@ -18,7 +18,6 @@ class Strategy():
                       'prev_time': 0, 'price': 0, 'prev_price': 0}
         self.price_source = config['price_source']
         self.pl = 0
-        self.pl_c = 0
         self.prev_pl = 0
         self.leverage_s = 1
         self.leverage_l = 1
@@ -153,6 +152,7 @@ class Strategy():
             if (self.trade['type'] == 'long'):
                 self.stop_loss = values[i]['price'] * (1 - (self.sl_initial_dif_l))
         if (not self.omit):
+            prev_pl_updated = False
             if (self.trade['prev_type'] != self.trade['type']):
                 self.trade['time'] = float(values[i]['time'])
                 p = self.trade['price']
@@ -189,10 +189,9 @@ class Strategy():
 
                         if (self.trade['prev_type'] != self.trade['type']):
                             if ((type(self.prev_pl) == type(1)) or (type(self.prev_pl) == type(1.1))):
-                                self.pl_c += 1
-                                self.pl = (self.prev_pl + (dif2 * self.last_pl_priority)) / (self.last_pl_priority + 1)
-                                self.prev_pl = ((self.prev_pl * self.pl_c) + dif2) / (self.pl_c + 1)
-
+                                self.prev_pl = self.prev_pl + (dif2 * self.last_pl_priority)
+                                self.pl = self.prev_pl
+                                prev_pl_updated = True
                             if (
                                 ((self.trade['type'] == 'long') and (self.trade['price'] < (self.trade['prev_price'] * (1 - fee_short)))) or
                                 ((self.trade['type'] == 'short') and (self.trade['price'] > (self.trade['prev_price'] * (1 + fee_long))))
@@ -402,7 +401,8 @@ class Strategy():
                                 d['total_investment'] += 1
 
                         if ((type(self.prev_pl) == type(1)) or (type(self.prev_pl) == type(1.1))):
-                            self.pl = (self.prev_pl + (dif * self.last_pl_priority)) / (self.last_pl_priority + 1)
+                            if (not prev_pl_updated):
+                                self.pl = self.prev_pl + (dif * self.last_pl_priority)
 
                         if (m > l): # Tendría ganancia con ese stop loss.
                             if (self.trade['type'] == 'short'):
@@ -419,7 +419,7 @@ class Strategy():
                             li = self.leverage_inc_s
                             if (self.trade['type'] == 'short'):
                                 li = self.leverage_inc_l
-                            inc = li * stage * (1.01 ** (1 + ((l_ok + tmp_l_ok) * 0.255)))
+                            inc = li * stage * (1.01 ** (1 + l_ok + tmp_l_ok))
 
                             tmp_zoom += (inc / 100)
                             if ((zoom + tmp_zoom) > 1):
@@ -439,7 +439,7 @@ class Strategy():
                             ld = self.leverage_dec_l
                             if (self.trade['type'] == 'short'):
                                 ld = self.leverage_dec_s
-                            dec = ld * stage * (1.01 ** (1 + ((l_no + tmp_l_no) * 0.255)))
+                            dec = ld * stage * (1.01 ** (1 + l_no + tmp_l_no))
                             tmp_zoom -= (dec / 100)
                             if ((zoom + tmp_zoom) < 0):
                                 tmp_zoom = 0
@@ -447,19 +447,19 @@ class Strategy():
                     a = self.m_aprox_s
                     if (self.trade['type'] == 'long'):
                         a = self.m_aprox_l
-                    aprox = a * zoom_p
+                    aprox = 0
                     if (
                         (
                             (trade_type == 'long') and
                             (
                                 (values[i]['price'] > (self.trade['price'] * (1 + fee))) or
                                 (
-                                    values[i]['price'] < (self.trade['price'] * (1 - (self.sl_initial_dif_l * 0.5)))
+                                    values[i]['price'] < (self.trade['price'] * (1 - (self.sl_initial_dif_l * 0.25)))
                                 )
                             )
                         ) or
 
-                        ((trade_type == 'short') and ((values[i]['price'] < (self.trade['price'] * (1 - fee))) or (values[i]['price'] < (self.trade['price'] * (1 + (self.sl_initial_dif_s * 0.5))))))
+                        ((trade_type == 'short') and ((values[i]['price'] < (self.trade['price'] * (1 - fee))) or (values[i]['price'] > (self.trade['price'] * (1 + (self.sl_initial_dif_s * 0.25))))))
                     ):
                         aprox = a * zoom_p * (((values[i]['time'] - float(self.trade['time'])) / self.timer) - self.omit_aprox_count)
                     else:

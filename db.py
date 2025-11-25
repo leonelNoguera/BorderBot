@@ -48,7 +48,7 @@ class Db(object):
 				best_initial_config = '{}'
 				if (cs == 'y'):
 					# Busca la última estrategia ready_to_use y con mayor pl.
-					statement = 'SELECT last_timestamp, pl, initial_config, comp_initial_config FROM strategies WHERE (timer = ' + str(timer) + ' && coin1 = "' + pair[0] + '" && coin2 = "' + pair[1] + '" AND ready_to_use) ORDER BY last_timestamp DESC LIMIT 1;'
+					statement = 'SELECT last_timestamp, pl, initial_config, comp_initial_config FROM strategies WHERE (timer = ' + str(timer) + ' && coin1 = "' + pair[0] + '" && coin2 = "' + pair[1] + '" AND ready_to_use) ORDER BY last_timestamp DESC, pl DESC LIMIT 1;'
 					cur = self.conn.cursor()
 					cur.execute(statement)
 					rows = cur.fetchall()
@@ -209,9 +209,9 @@ class Db(object):
 
 	def set_strategy(self, row, v = None, change_comp = False):
 		if (type(row) == type(())):
-			init_timestamp, name, timer, derivatives, stop_loss, trade_type, trade_timestamp, trade_prev_timestamp, trade_price, trade_prev_price, last_timestamp, leverage_s, leverage_l, pl, pl_c, prev_pl, l_l_ok, l_s_ok, l_l_no, l_s_no, zoom_s, zoom_l, far_price, initial_config = row
+			init_timestamp, name, timer, derivatives, stop_loss, trade_type, trade_timestamp, trade_prev_timestamp, trade_price, trade_prev_price, last_timestamp, leverage_s, leverage_l, pl, prev_pl, l_l_ok, l_s_ok, l_l_no, l_s_no, zoom_s, zoom_l, far_price, initial_config = row
 			if (change_comp):
-				init_timestamp, name, timer, derivatives, stop_loss, trade_type, trade_timestamp, trade_prev_timestamp, trade_price, trade_prev_price, last_timestamp, leverage_s, leverage_l, pl, pl_c, prev_pl, l_l_ok, l_s_ok, l_l_no, l_s_no, zoom_s, zoom_l, far_price, initial_config, comp_pl, comp_initial_config, comp_last_timestamp, comp_prev_pl = row
+				init_timestamp, name, timer, derivatives, stop_loss, trade_type, trade_timestamp, trade_prev_timestamp, trade_price, trade_prev_price, last_timestamp, leverage_s, leverage_l, pl, prev_pl, l_l_ok, l_s_ok, l_l_no, l_s_no, zoom_s, zoom_l, far_price, initial_config, comp_pl, comp_initial_config, comp_last_timestamp, comp_prev_pl = row
 
 			v = strategy.Strategy(self, timer, self.coin1, self.coin2, config = self.config, name = name, mode = 'real_time', socket = self.socket, save = False)
 
@@ -227,7 +227,6 @@ class Db(object):
 			v.leverage_s = leverage_s
 			v.leverage_l = leverage_l
 			v.pl = pl
-			v.pl_c = pl_c
 			v.prev_pl = prev_pl
 			v.l_l_ok = l_l_ok
 			v.l_s_ok = l_s_ok
@@ -256,7 +255,6 @@ class Db(object):
 			v.leverage_s = row['leverage_s']
 			v.leverage_l = row['leverage_l']
 			v.pl = row['pl']
-			v.pl_c = row['pl_c']
 			v.prev_pl = row['prev_pl']
 			v.l_l_ok = row['l_l_ok']
 			v.l_s_ok = row['l_s_ok']
@@ -359,7 +357,7 @@ class Db(object):
 				new_initial_config = ''
 				# Busca la última estrategia ready_to_use y con mayor pl.
 				d_comp = None
-				statement = 'SELECT last_timestamp, pl, initial_config, comp_initial_config, derivatives FROM strategies WHERE (timer = ' + str(timer) + ' && coin1 = "' + coin1 + '" && coin2 = "' + coin2 + '" AND ready_to_use) ORDER BY last_timestamp DESC LIMIT 1;'
+				statement = 'SELECT last_timestamp, pl, initial_config, comp_initial_config, derivatives FROM strategies WHERE (timer = ' + str(timer) + ' && coin1 = "' + coin1 + '" && coin2 = "' + coin2 + '" AND ready_to_use) ORDER BY last_timestamp DESC, pl DESC LIMIT 1;'
 				cur.execute(statement)
 				rows = cur.fetchall()
 				if (rows):
@@ -432,7 +430,7 @@ class Db(object):
 					v.m_aprox_l = self.random_var(v.m_aprox_l, config2[coin1 + '-' + coin2]['m_aprox_min'], config2[coin1 + '-' + coin2]['m_aprox_max'], config2[coin1 + '-' + coin2]['m_aprox_decimals'], dif_initial_config['m_aprox_l'])
 
 					v.sl_s_dif = self.random_var(v.sl_s_dif, config2[coin1 + '-' + coin2]['sl_dif_min'], config2[coin1 + '-' + coin2]['sl_dif_max'], config2[coin1 + '-' + coin2]['sl_dif_decimals'], dif_initial_config['sl_s_dif'])
-					v.sl_s_dif = self.random_var(v.sl_l_dif, config2[coin1 + '-' + coin2]['sl_dif_min'], config2[coin1 + '-' + coin2]['sl_dif_max'], config2[coin1 + '-' + coin2]['sl_dif_decimals'], dif_initial_config['sl_l_dif'])
+					v.sl_l_dif = self.random_var(v.sl_l_dif, config2[coin1 + '-' + coin2]['sl_dif_min'], config2[coin1 + '-' + coin2]['sl_dif_max'], config2[coin1 + '-' + coin2]['sl_dif_decimals'], dif_initial_config['sl_l_dif'])
 
 					v.high_leverage_s = int(self.random_var(v.high_leverage_s, config2[coin1 + '-' + coin2]['high_leverage_min'], config2[coin1 + '-' + coin2]['high_leverage_max'], config2[coin1 + '-' + coin2]['high_leverage_decimals'], dif_initial_config['high_leverage_s']))
 					v.high_leverage_l = int(self.random_var(v.high_leverage_l, config2[coin1 + '-' + coin2]['high_leverage_min'], config2[coin1 + '-' + coin2]['high_leverage_max'], config2[coin1 + '-' + coin2]['high_leverage_decimals'], dif_initial_config['high_leverage_l']))
@@ -453,7 +451,7 @@ class Db(object):
 					rows = cur.fetchall()
 			print('Se usará una estrategia con: ' + v.initial_config)
 			# Busca la última estrategia ready_to_use y con mayor pl, para comparar con la estrategia nueva.
-			statement = 'SELECT last_timestamp, pl, initial_config, comp_initial_config FROM strategies WHERE (timer = ' + str(timer) + ' && coin1 = "' + coin1 + '" && coin2 = "' + coin2 + '" AND ready_to_use) ORDER BY last_timestamp DESC LIMIT 1;'
+			statement = 'SELECT last_timestamp, pl, initial_config, comp_initial_config FROM strategies WHERE (timer = ' + str(timer) + ' && coin1 = "' + coin1 + '" && coin2 = "' + coin2 + '" AND ready_to_use) ORDER BY last_timestamp DESC, pl DESC LIMIT 1;'
 			cur.execute(statement)
 			rows = cur.fetchall()
 			if (rows):
@@ -528,7 +526,7 @@ class Db(object):
 
 		new_initial_config = ''
 		# Busca la última estrategia ready_to_use y con mayor pl.
-		statement = 'SELECT last_timestamp, pl, initial_config, comp_initial_config FROM strategies WHERE (timer = ' + str(timer) + ' && coin1 = "' + coin1 + '" && coin2 = "' + coin2 + '" AND ready_to_use) ORDER BY last_timestamp DESC LIMIT 1;'
+		statement = 'SELECT last_timestamp, pl, initial_config, comp_initial_config FROM strategies WHERE (timer = ' + str(timer) + ' && coin1 = "' + coin1 + '" && coin2 = "' + coin2 + '" AND ready_to_use) ORDER BY last_timestamp DESC, pl DESC LIMIT 1;'
 		cur.execute(statement)
 		rows = cur.fetchall()
 		if (rows):
@@ -577,7 +575,7 @@ class Db(object):
 				cur.execute(statement)
 				self.conn.commit()
 
-			statement = 'SELECT init_timestamp, name, timer, derivatives, stop_loss, trade_type, trade_timestamp, trade_prev_timestamp, trade_price, trade_prev_price, last_timestamp, leverage_s, leverage_l, pl, pl_c, prev_pl, l_l_ok, l_s_ok, l_l_no, l_s_no, zoom_s, zoom_l, far_price, initial_config FROM ' + t + 'strategies WHERE (timer = ' + str(timer) + ' && coin1 = "' + coin1 + '" && coin2 = "' + coin2 + '" AND initial_config = \'' + new_initial_config + '\') ORDER BY last_timestamp DESC LIMIT 1;'
+			statement = 'SELECT init_timestamp, name, timer, derivatives, stop_loss, trade_type, trade_timestamp, trade_prev_timestamp, trade_price, trade_prev_price, last_timestamp, leverage_s, leverage_l, pl, prev_pl, l_l_ok, l_s_ok, l_l_no, l_s_no, zoom_s, zoom_l, far_price, initial_config FROM ' + t + 'strategies WHERE (timer = ' + str(timer) + ' && coin1 = "' + coin1 + '" && coin2 = "' + coin2 + '" AND initial_config = \'' + new_initial_config + '\') ORDER BY last_timestamp DESC LIMIT 1;'
 			cur.execute(statement)
 			rows = cur.fetchall()
 			if (rows):

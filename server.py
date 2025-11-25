@@ -62,7 +62,6 @@ def threaded_client(connection):
 							'leverage_s' : v.leverage_s,
 							'leverage_l' : v.leverage_l,
 							'pl' : float(v.pl),
-							'pl_c' : float(v.pl_c),
 							'prev_pl' : float(v.prev_pl),
 							'l_l_ok' : float(v.l_l_ok),
 							'l_s_ok' : float(v.l_s_ok),
