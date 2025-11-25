@@ -10,6 +10,11 @@ Lo presentado en este proyecto no es recomendación de inversión.
 Solamente comparto una herramienta de trading.
 Usted debe ser cauteloso con esta herramienta o con cualquier otra.
 
+## Canal de Odysee (alternativa a YouTube)
+
+Le invito a seguirme en mi canal https://odysee.com/$/invite/@EspeculadorFinanciero:7
+Allí hay explicaciones más detalladas del bot.
+
 ## Explicación de "borderbot.py" y "client.py"
 
 Cuando simula trading en tiempo real ("borderbot.py") o hace backtesting ("client.py").
