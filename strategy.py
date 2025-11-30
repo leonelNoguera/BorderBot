@@ -152,7 +152,6 @@ class Strategy():
             if (self.trade['type'] == 'long'):
                 self.stop_loss = values[i]['price'] * (1 - (self.sl_initial_dif_l))
         if (not self.omit):
-            prev_pl_updated = False
             if (self.trade['prev_type'] != self.trade['type']):
                 self.trade['time'] = float(values[i]['time'])
                 p = self.trade['price']
@@ -189,9 +188,8 @@ class Strategy():
 
                         if (self.trade['prev_type'] != self.trade['type']):
                             if ((type(self.prev_pl) == type(1)) or (type(self.prev_pl) == type(1.1))):
-                                self.prev_pl = self.prev_pl + (dif2 * self.last_pl_priority)
+                                self.prev_pl = self.prev_pl + dif2
                                 self.pl = self.prev_pl
-                                prev_pl_updated = True
                             if (
                                 ((self.trade['type'] == 'long') and (self.trade['price'] < (self.trade['prev_price'] * (1 - fee_short)))) or
                                 ((self.trade['type'] == 'short') and (self.trade['price'] > (self.trade['prev_price'] * (1 + fee_long))))
@@ -401,8 +399,7 @@ class Strategy():
                                 d['total_investment'] += 1
 
                         if ((type(self.prev_pl) == type(1)) or (type(self.prev_pl) == type(1.1))):
-                            if (not prev_pl_updated):
-                                self.pl = self.prev_pl + (dif * self.last_pl_priority)
+                            self.pl = self.prev_pl + (dif * self.last_pl_priority)
 
                         if (m > l): # Tendría ganancia con ese stop loss.
                             if (self.trade['type'] == 'short'):
