@@ -478,10 +478,8 @@ class Strategy():
                     sl2 = self.far_price * (1 - sl_p + aprox)
                     if (trade_type == 'short'):
                         sl2 = self.far_price * (1 + sl_p - aprox)
-                    if (sl2 < 0):
-                        sl2 = self.far_price * (1 - sl_p)
-                        if (trade_type == 'short'):
-                            sl2 = self.far_price * (1 + sl_p)
+                    if ((sl2 < 0) and (trade_type == 'long')):
+                        sl2 = values[i]['price']
 
                     if (
                         (
