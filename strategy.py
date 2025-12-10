@@ -146,7 +146,7 @@ class Strategy():
             j -= 1
         sl = None
 
-        if ((not self.omit) and ((not self.stop_loss) or (self.stop_loss < 0))):
+        if ((not self.omit) and (not self.stop_loss)):
             if (self.trade['type'] == 'short'):
                 self.stop_loss = values[i]['price'] * (1 + (self.sl_initial_dif_s))
             if (self.trade['type'] == 'long'):
