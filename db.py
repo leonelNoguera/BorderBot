@@ -34,14 +34,13 @@ class Db(object):
 			f.close()
 			f = open('config_cpu_temp.json', 'w')
 			f.write(json.JSONEncoder().encode(self.config_cpu_temp))
-			self.config_cpu_temp['total_client_pause_seconds'] = 0
 			f.close()
 		else:
 			f = open('config_cpu_temp.json', 'r')
 			self.config_cpu_temp = json.JSONDecoder().decode(f.read())
-			self.config_cpu_temp['total_client_pause_seconds'] = 0
-			self.config_cpu_temp['client_pause_seconds'] = 0
 			f.close()
+		self.config_cpu_temp['total_client_pause_seconds'] = 0
+		self.config_cpu_temp['client_pause_seconds'] = 0
 
 
 	def read_prices_local(self, it):

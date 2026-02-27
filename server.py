@@ -55,15 +55,19 @@ def threaded_client(connection):
 			if (data and (data['type'] == 'SQL')):
 				if (data['sub-type'] == 'get_next_strategy_to_test'):
 					if (config_cpu_temp):
+						f = open('config_cpu_temp.json', 'r')
+						config_cpu_temp['max_temp'] = json.JSONDecoder().decode(f.read())['max_temp']
+						f.close()
 						f = open('config_cpu_temp.json', 'w')
 						f.write(json.JSONEncoder().encode(config_cpu_temp))
 						f.close()
 					else:
 						f = open('config_cpu_temp.json', 'r')
 						config_cpu_temp = json.JSONDecoder().decode(f.read())
-						config_cpu_temp['total_server_pause_seconds'] = 0
-						config_cpu_temp['server_pause_seconds'] = 0
 						f.close()
+					config_cpu_temp['total_server_pause_seconds'] = 0
+					config_cpu_temp['server_pause_seconds'] = 0
+
 					f = open('config_server.json', 'r')
 					status = json.JSONDecoder().decode(f.read())['status']
 					f.close()
@@ -111,7 +115,7 @@ def threaded_client(connection):
 					temp = psutil.sensors_temperatures()['acpitz'][0].current
 					if (temp >= config_cpu_temp['max_temp']):
 						config_cpu_temp['server_pause_seconds'] += 1
-						config_cpu_temp['total_server_pause_seconds'] += 1
+						config_cpu_temp['total_server_pause_seconds'] += config_cpu_temp['server_pause_seconds']
 						print('Pausa de ' + str(config_cpu_temp['server_pause_seconds']) + ' segundos para enfriar procesador.')
 						time.sleep(config_cpu_temp['server_pause_seconds'])
 					else:
