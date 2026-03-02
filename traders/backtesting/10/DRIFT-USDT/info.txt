@@ -1,0 +1,1 @@
+Aquí se guardan los traders del backtesting con timer de 10 segundos.

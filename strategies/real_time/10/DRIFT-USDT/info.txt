@@ -1,0 +1,1 @@
+Aquí se guardan las estrategies en tiempo real con timer de 10 segundos.

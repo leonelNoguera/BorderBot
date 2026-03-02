@@ -1,0 +1,1 @@
+Aquí se guardan los precios del lado del cliente para tenerlos disponibles cada vez que vuelve a ejecutarse.
