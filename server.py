@@ -1,7 +1,7 @@
 import socket
 import sys
 from threading import Thread
-import borderbot
+import db
 import json
 from datetime import datetime
 import time
@@ -17,6 +17,8 @@ print(socket.gethostname())
 my_socket.bind(('', port))
 my_socket.listen(5)
 def threaded_client(connection):
+	import db
+	db = db.Db()
 	bot = None
 	connection.send(str.encode(json.JSONEncoder().encode({'msg' : 'Connected.'})))
 	values = None
@@ -25,9 +27,14 @@ def threaded_client(connection):
 	complete_reply = None
 	connected = True
 	f = open('config.json', 'r')
-	config_list = list(json.JSONEncoder().encode(json.JSONDecoder().decode(f.read())))
+	txt = f.read()
+	config = json.JSONDecoder().decode(txt)
+	config_list = list(txt)
 	f.close()
 	config_cpu_temp = None
+	timer = 10
+	coin1 = None
+	coin2 = None
 	while (connected):
 		r = conn.recv(5000)
 		if (r.decode('utf-8')):
@@ -42,32 +49,41 @@ def threaded_client(connection):
 
 			if (data and (data['type'] == 'config')):
 				if (data['sub-type'] == 'get_config'):
-					config = ''
+					config_l = ''
 					for i in range(900):
 						if (len(config_list)):
-							config += config_list.pop(0)
-					reply = json.JSONEncoder().encode({'reply' : 'get_config', 'config' : config})
+							config_l += config_list.pop(0)
+					reply = json.JSONEncoder().encode({'reply' : 'get_config', 'config' : config_l})
+					db.set_config(config, 'backtesting', coin1, coin2)
 					connection.send(str.encode(reply))
 				if (data['sub-type'] == 'set_pair'):
-					bot = borderbot.BorderBot([data['pair']], 'real_time')
+					coin1 = data['pair'].split('-')[0]
+					coin2 = data['pair'].split('-')[1]
 					connection.send(str.encode('{}'))
 
 			if (data and (data['type'] == 'SQL')):
 				if (data['sub-type'] == 'get_next_strategy_to_test'):
-					if (config_cpu_temp):
+					config_ok = False
+					while (not config_ok):
+						config_ok = True
 						f = open('config_cpu_temp.json', 'r')
-						config_cpu_temp['max_temp'] = json.JSONDecoder().decode(f.read())['max_temp']
+						d = f.read()
+						try:
+							if (config_cpu_temp):
+								config_cpu_temp['max_temp'] = json.JSONDecoder().decode(d)['max_temp']
+								config_cpu_temp['no_pause_periods'] = json.JSONDecoder().decode(d)['no_pause_periods']
+							else:
+								config_cpu_temp = json.JSONDecoder().decode(d)
+						except:
+							config_ok = False
 						f.close()
-						f = open('config_cpu_temp.json', 'w')
-						f.write(json.JSONEncoder().encode(config_cpu_temp))
-						f.close()
-					else:
-						f = open('config_cpu_temp.json', 'r')
-						config_cpu_temp = json.JSONDecoder().decode(f.read())
-						f.close()
+						if (config_cpu_temp):
+							f = open('config_cpu_temp.json', 'w')
+							f.write(json.JSONEncoder().encode(config_cpu_temp))
+							f.close()
 					config_cpu_temp['total_server_pause_seconds'] = 0
 					config_cpu_temp['server_pause_seconds'] = 0
-
+					#{"status" : "on"}
 					f = open('config_server.json', 'r')
 					status = json.JSONDecoder().decode(f.read())['status']
 					f.close()
@@ -80,7 +96,7 @@ def threaded_client(connection):
 							f.close()
 						print('Continuando...')
 					if (data['first_reply']):
-						v = bot.db.get_next_strategy_to_test(bot.coin1, bot.coin2, bot.timer, bot.config)
+						v = db.get_next_strategy_to_test(coin1, coin2, timer)
 						complete_reply = list(json.JSONEncoder().encode({'reply' : 'get_next_strategy_to_test', 'initial_config' : v.initial_config,
 							'last_timestamp' : float(v.last_timestamp),
 							'derivatives' : v.derivatives,
@@ -108,7 +124,7 @@ def threaded_client(connection):
 						}))
 
 					reply = ''
-					while ((len(reply) <= 700) and len(complete_reply)):
+					while ((len(reply) <= 600) and len(complete_reply)):
 						reply += complete_reply.pop(0)
 					connection.send(str.encode(reply))
 				if (data['sub-type'] == 'get_prices'):
@@ -122,7 +138,7 @@ def threaded_client(connection):
 						if (config_cpu_temp['server_pause_seconds'] > 1):
 							config_cpu_temp['server_pause_seconds'] -= 1
 					if ((not values) and data['data']):
-						values = bot.db.get_prices(bot.coin1, bot.coin2, bot.timer, data['data'])
+						values = db.get_prices(coin1, coin2, data['data'])
 						last_i = 0
 					prices = ''
 					if (values):
@@ -135,16 +151,16 @@ def threaded_client(connection):
 					reply = json.JSONEncoder().encode({'reply' : 'get_prices', 'prices' : prices})
 					connection.send(str.encode(reply))
 				if (data['sub-type'] == 'save_trader'):
-					bot.db.save_trader(None, 'backtesting', data['data'])
+					db.save_trader(data['data'])
 					reply = json.JSONEncoder().encode({'reply' : 'save_trader'})
 					connection.send(str.encode(reply))
 				if (data['sub-type'] == 'update_trader'):
-					bot.db.update_trader(None, 'backtesting', data['data'])
+					db.update_trader('backtesting', data['data'])
 					reply = json.JSONEncoder().encode({'reply' : 'update_trader'})
 					connection.send(str.encode(reply))
 				if (data['sub-type'] == 'get_init_timestamps'):
 					if ((not values) and (data['first'])):
-						values = bot.db.get_init_timestamps(data['st_last_timestamp'])
+						values = db.get_init_timestamps(data['st_last_timestamp'])
 					init_timestamps = []
 					if (values):
 						for i in range(10):
@@ -155,7 +171,7 @@ def threaded_client(connection):
 					reply = json.JSONEncoder().encode({'reply' : 'get_init_timestamps', 'init_timestamps' : init_timestamps})
 					connection.send(str.encode(reply))
 				if (data['sub-type'] == 'get_db_update_timestamp'):
-					u , i = bot.db.get_db_update_timestamp(data['data'])
+					u , i = db.get_db_update_timestamp(data['data'])
 					reply = json.JSONEncoder().encode({'reply' : 'get_db_update_timestamp', 'update_timestamp' : float(u), 'init_timestamp' : float(i)})
 					connection.send(str.encode(reply))
 				if (data['sub-type'] == 'save_strategy'):
@@ -164,7 +180,7 @@ def threaded_client(connection):
 							values = ''
 						values += data['data']
 					else:
-						bot.db.save_strategy(None, 'backtesting', values)
+						db.save_strategy(None, 'backtesting', values)
 						values = None
 					reply = json.JSONEncoder().encode({'reply' : 'save_strategy'})
 					connection.send(str.encode(reply))
@@ -175,7 +191,7 @@ def threaded_client(connection):
 							values = ''
 						values += data['data']
 					else:
-						comp = bot.db.update_strategy(None, 'backtesting', values, data['timer'], data['coin1'], data['coin2'], update_comp = data['update_comp'])
+						comp = db.update_strategy(None, 'backtesting', values, data['timer'], data['coin1'], data['coin2'], update_comp = data['update_comp'])
 						values = None
 					reply = json.JSONEncoder().encode({'reply' : 'update_strategy', 'comp' : comp})
 					connection.send(str.encode(reply))

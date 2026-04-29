@@ -6,7 +6,7 @@ import json
 
 class Client(object):
     def __init__(self, args):
-        self.pair = 'WCT-USDT'
+        self.pair = 'DRIFT-USDT'
         port = 7000
         host = 'localhost'
         if (args and (len(args) > 3)):

@@ -1,5 +1,7 @@
 from datetime import datetime
 import json
+import psutil
+import time
 class Strategy():
 	def __init__(self, timer, coin1, coin2, config, name):
 		super().__init__()
@@ -65,6 +67,8 @@ class Strategy():
 		self.comp_last_timestamp = 0
 
 		self.derivatives = None
+		self.config_cpu_temp = None
+		self.c_periods = 0
 		self.change_initial_config()
 
 
@@ -123,6 +127,27 @@ class Strategy():
 			if (self.derivatives[i]['wait_far_price_dif']):
 				self.derivatives[i]['far_price_dif_s'] = self.far_price_dif_s
 				self.derivatives[i]['far_price_dif_l'] = self.far_price_dif_l
+
+		config_ok = False
+		while (not config_ok):
+			config_ok = True
+			f = open('config_cpu_temp.json', 'r')
+			d = f.read()
+			try:
+				if (self.config_cpu_temp):
+					self.config_cpu_temp['max_temp'] = json.JSONDecoder().decode(d)['max_temp']
+					self.config_cpu_temp['no_pause_periods'] = json.JSONDecoder().decode(d)['no_pause_periods']
+				else:
+					self.config_cpu_temp = json.JSONDecoder().decode(d)
+			except:
+				config_ok = False
+			f.close()
+			if (self.config_cpu_temp):
+				f = open('config_cpu_temp.json', 'w')
+				f.write(json.JSONEncoder().encode(self.config_cpu_temp))
+				f.close()
+		self.config_cpu_temp['total_client_pause_seconds'] = 0
+		self.config_cpu_temp['client_pause_seconds'] = 0
 
 	def change_status(self, values, i, fee_short, fee_long):
 		"""
@@ -243,7 +268,6 @@ class Strategy():
 				self.omit_aprox_count = 0
 
 			flag = False
-			# Cambio de trade, de ser necesario.
 			if (self.stop_loss and (((self.trade['type'] == 'long') and (values[i]['price'] <= self.stop_loss)) or ((self.trade['type'] == 'short') and (values[i]['price'] >= self.stop_loss)))):
 				self.far_price = values[i]['price']
 				self.trade['prev_price'] = self.trade['price']
@@ -316,7 +340,7 @@ class Strategy():
 							close_position = False
 							if ((d['position'] != 'close') and (d['position'] != self.trade['type'])):
 								coin2_balance = d['coin2_balance'] * (1 + dif2) * (1 - (fee * 0.5 * int(leverage)))
-								if (coin2_balance  <= 0.01):
+								if (coin2_balance <= 0.4):
 									close_position = True
 									print('Se cerrará la posición por liquidación.')
 								else:
@@ -377,7 +401,7 @@ class Strategy():
 									print('strategy derivatives, ' + d['position'] + t2 + ', ' + str(d['coin2_balance']) + ' USD, investment: ' + str(d['total_investment']) + ', ' + datetime.fromtimestamp(values[i]['time']).isoformat() + ', open price: ' + str(d['open_price']) + ', leverage: ' + str(int(d['leverage'])))
 
 							if (d['coin2_balance'] >= 0):
-								if (d['coin2_balance'] <= 0.01):
+								if (d['coin2_balance'] <= 0.4):
 									d['coin2_balance'] += 1
 									d['total_investment'] += 1
 							else:
@@ -442,7 +466,7 @@ class Strategy():
 						) or
 						(
 							(trade_type == 'short') and
-							(# 90 < (100 * (1 - 0.005))
+							(
 								(values[i]['price'] < (self.trade['price'] * (1 - fee))) or
 								(
 									values[i]['price'] >= (self.trade['price'] * (1 + (self.sl_initial_dif_s * 0.25)))
@@ -461,7 +485,7 @@ class Strategy():
 					if (trade_type == 'short'):
 						sl2 = self.trade['price'] * (1 + self.sl_initial_dif_s - self.sl_reduced_dif_s)
 
-					if (((trade_type == 'long') and (sl < sl2)) or ((trade_type == 'short') and (sl > sl2))): #No está en la zona de profit o break even.
+					if (((trade_type == 'long') and (sl < sl2)) or ((trade_type == 'short') and (sl > sl2))): #No está en la zona de break even o mejor.
 						sl_p = self.sl_initial_dif_s
 						if (trade_type == 'long'):
 							sl_p = self.sl_initial_dif_l
@@ -487,3 +511,15 @@ class Strategy():
 		else:
 			self.last_s_s = 0
 			self.last_s_l = 0
+		self.c_periods += 1
+		if (self.c_periods == self.config_cpu_temp['no_pause_periods']):
+			temp = psutil.sensors_temperatures()['acpitz'][0].current
+			if (temp >= self.config_cpu_temp['max_temp']):
+				self.config_cpu_temp['client_pause_seconds'] += 1
+				self.config_cpu_temp['total_client_pause_seconds'] += 1
+				print('Pausa de ' + str(self.config_cpu_temp['client_pause_seconds']) + ' segundos para enfriar procesador.')
+				time.sleep(self.config_cpu_temp['client_pause_seconds'])
+			else:
+				if (self.config_cpu_temp['client_pause_seconds'] > 1):
+					self.config_cpu_temp['client_pause_seconds'] -= 1
+			self.c_periods = 0

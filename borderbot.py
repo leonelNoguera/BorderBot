@@ -1,32 +1,21 @@
 from datetime import datetime
-from bs4 import BeautifulSoup
 import time
-import requests
 import json
 import sys
-import db
+import db_client
 
 class BorderBot(object):
 	"""docstring for BorderBot"""
-	def __init__(self, args, mode = 'backtesting', socket = None, config = None):
+	def __init__(self, args, socket = None, config = None):
 		super(BorderBot, self).__init__()
-		self.mode = mode
 		self.socket = socket
-		f = open('config.json', 'r')
-		self.config = json.JSONDecoder().decode(f.read())
-		f.close()
-		self.timer = self.config['timer']
-		if (config): # Sucede cuando es un cliente que recibe la configuración desde el servidor.
-			self.config = config
-			self.timer = config['timer']
-			self.sleep_timer = config['timer']
+		self.config = config
+		self.timer = config['timer']
+		self.sleep_timer = config['timer']
 
-		self.simulate_trading = self.config['simulate_trading']
 		if (len(args)):
 			self.coin1 = args[0].split('-')[0]
 			self.coin2 = args[0].split('-')[1]
-			if (len(args) > 1):
-				self.simulate_trading = int(args[1])
 		else:
 			self.coin1 = self.config['pair'].split('-')[0]
 			self.coin2 = self.config['pair'].split('-')[1]
@@ -38,10 +27,7 @@ class BorderBot(object):
 
 		self.derivatives = [{'position' : 'close', 'coin2_balance' : 1, 'min_zoom' : {'c' : '>=', 'n' : 0}, 'total_investment' : 1}]
 
-		self.price_source = self.config['price_source']
-
-		if (self.mode == 'backtesting'):
-			self.price_source = 'db'
+		self.price_source = 'db'
 		self.prev_price = 0
 		self.p_s_u = 0
 		self.e_p_u = 0
@@ -52,12 +38,8 @@ class BorderBot(object):
 		self.last_timestamp = 0
 		self.fee_p_c = 0
 		self.fee_p_a = 0
-		self.initial_config = '{}'
-		if (self.simulate_trading):
-			self.db = db.Db(self.config, self.mode, self.coin1, self.coin2, self.socket)
-		# Representa la mayor cantidad de periodos del timing seleccionado (por defecto 10 segundos) que puede haber en una lista de precios dentro de un mismo archivo. Es necesario para no tener que procesar archivos demasiado grandes (en caso de dejar en bot funcionando por mucho tiempo sin detenerse).
-		# DRIFT
-		self.max_periods = 25920 # con 10 segundos de timer, son 3 días
+		#if (self.simulate_trading):
+		self.db = db_client.Db(self.config, self.coin1, self.coin2, self.socket)
 		self.strategy = None
 		self.last_up_down_priority = self.config[self.coin1 + '-' + self.coin2]['last_up_down_priority'] # Cuanta prioridad se le dará a la última diferencia de precios respecto al promedio general.
 		self.min_fee = self.config[self.coin1 + '-' + self.coin2]['min_fee']
@@ -68,38 +50,13 @@ class BorderBot(object):
 		self.min_balance = self.config['min_balance']
 
 
-	def get_price(self):
-		"""Se obtienen los precios de Jupiter y los guarda en el array self.values"""
-		try:
-			soup = BeautifulSoup(requests.get(self.link, headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}, timeout = 5).content.decode(), 'html.parser')
-			html = soup.decode()
-			if (self.price_source == 'jupiter'):
-				try:
-					price = float(json.JSONDecoder().decode(html)[self.config[self.coin1 + '-' + self.coin2]['id']]['usdPrice'])
-					new = {'time' : datetime.now().timestamp(), 'price' : price}
-					self.values.append(new)
-					if (not self.strategy):
-						print(datetime.fromtimestamp(new['time']).isoformat() + ', ' + str(new['price']))
-				except:
-					0
-				return new
-		except:
-			print('Falló la obtención del precio.')
-		if (len(self.values) >= 1500):
-			self.values = self.values[-1000:]
-
-
 	def start(self):
 		"""Se inicia el bot, en tiempo real o en backtesting"""
 		self.values = []
 		self.trade_type = None
-		if (self.price_source == 'jupiter'):
-			self.link = 'https://lite-api.jup.ag/price/v3?ids=' + self.config[self.coin1 + '-' + self.coin2]['id']
-		try:
+		if (self.db):
 			self.derivatives = [{'position' : 'close', 'coin2_balance' : 1, 'min_zoom' : {'c' : '>=', 'n' : 0}, 'total_investment' : 1}]
 			self.db.reset_values()
-		except:
-			0
 		self.analyze()
 
 
@@ -155,7 +112,7 @@ class BorderBot(object):
 					if (self.values[j]['time'] > self.last_dif_t):
 						t = 'La diferencia es: ' + str(dif) + ' en ' + str(self.values[j]['time'])
 						print(t)
-						f = open('prices/dif_' + self.coin1 + '-' + self.coin2 + '_' + str(self.timer) + '_' + self.mode + '.txt', 'a')
+						f = open('prices/dif_' + self.coin1 + '-' + self.coin2 + '_' + str(self.timer) + '_backtesting.txt', 'a')
 						f.write(t + '\n')
 						f.close()
 				else:
@@ -233,7 +190,7 @@ class BorderBot(object):
 							d['position'] = trade_type
 
 					if (d['coin2_balance'] >= 0):
-						if (d['coin2_balance'] <= 0.01):
+						if (d['coin2_balance'] <= 0.4):
 							d['coin2_balance'] += 1
 							d['total_investment'] += 1
 					else:
@@ -246,316 +203,101 @@ class BorderBot(object):
 			Asigna al trader la que es, teóricamante, la mejor estrategia hasta el momento.
 			Muestra cierta información al abrir una posición.
 		"""
-		self.log_file_path = str(datetime.now().timestamp()) + '_' + self.config['price_source']
 		leverage_s = 1
 		leverage_l = 1
 		zoom_s = 0
 		zoom_l = 0
 		c1 = self.coin1
 		c2 = self.coin2
-		if (self.price_source == 'db'):
-			print('Obteniendo precios de la db.')
+		print('Obteniendo precios de la db.')
+		omit = False
+		more_data = True
+		self.strategy = self.db.get_next_strategy_to_test(self.coin1, self.coin2, self.timer, self.config)
+		self.initial_config = self.strategy.initial_config
+		self.db.save_strategy(self.strategy)
+		self.db.save_trader(self)
+		aux_pl = None
+		prev_time = None
+		while (more_data):
+			prev_omitted = False
+			if (omit):
+				prev_omitted = True
 			omit = False
-			more_data = True
-			self.strategy = self.db.get_strategy(
-				self.timer,
-				self.coin1,
-				self.coin2,
-				config = self.config,
-				mode = self.mode,
-				socket = self.socket
-			)
-			self.initial_config = self.strategy.initial_config
-			self.db.save_strategy(self.strategy, self.mode)
-			self.db.save_trader(self)
-			aux_pl = None
-			prev_time = None
-			while (more_data):
-				prev_omitted = False
-				if (omit):
-					prev_omitted = True
-				omit = False
-				more_data = False
-				prev_value = -1
-				self.values, more_data = self.db.get_prices(self.coin1, self.coin2, self.timer, None, self.strategy.last_timestamp, self.prices_gap_tolerance_seconds)
-				if (self.values and len(self.values)):
-					j = 0
+			more_data = False
+			prev_value = -1
+			self.values, more_data = self.db.get_prices(self.strategy.last_timestamp, self.prices_gap_tolerance_seconds)
+			if (self.values and len(self.values)):
+				j = 0
+				initial = 1
+				while ((self.values[j]['time'] <= self.db.init_timestamp) and ((j + 1) < len(self.values))):
+					j += 1
+				initial = j
+				if (initial < 1):
 					initial = 1
-					while ((self.values[j]['time'] <= self.db.init_timestamp) and ((j + 1) < len(self.values))):
-						j += 1
-					initial = j
-					if (initial < 1):
-						initial = 1
-					zoom_s = self.strategy.zoom_s
-					zoom_l = self.strategy.zoom_l
-					leverage_s = int(self.strategy.leverage_s)
-					leverage_l = int(self.strategy.leverage_l)
-					for j in range(initial, len(self.values)):
-						self.last_timestamp = self.values[j]['time']
-						omit = self.validate_dif(j, prev_omitted)
-						if ((self.values[j]['price'] != prev_value) and (not omit)):
-							if (self.strategy.last_timestamp < self.values[j]['time']):
-								self.strategy.change_status(self.values, j, self.fee_short, self.fee_long)
-								if (self.values[j]['time'] <= self.strategy.comp_last_timestamp): # Está en el last_timestamp de la estrategia anterior.
-									self.strategy.comp_pl = self.strategy.pl
-							if (self.strategy.trade['type'] and (self.strategy.trade['type'] != self.trade_type)):
-								self.trade_type = self.strategy.trade['type']
-								if (self.trade_type == 'short'):
-									zoom_s = self.strategy.zoom_s
-									leverage_s = int(self.strategy.leverage_s)
-								else:
-									zoom_l = self.strategy.zoom_l
-									leverage_l = int(self.strategy.leverage_l)
-								self.change_trade(leverage_s, leverage_l, zoom_s, zoom_l, j)
+				zoom_s = self.strategy.zoom_s
+				zoom_l = self.strategy.zoom_l
+				leverage_s = int(self.strategy.leverage_s)
+				leverage_l = int(self.strategy.leverage_l)
+				for j in range(initial, len(self.values)):
+					self.last_timestamp = self.values[j]['time']
+					omit = self.validate_dif(j, prev_omitted)
+					if ((self.values[j]['price'] != prev_value) and (not omit)):
+						if (self.strategy.last_timestamp < self.values[j]['time']):
+							self.strategy.change_status(self.values, j, self.fee_short, self.fee_long)
+							if (self.values[j]['time'] <= self.strategy.comp_last_timestamp): # Está en el last_timestamp de la estrategia anterior.
+								self.strategy.comp_pl = self.strategy.pl
+						if (self.strategy.trade['type'] and (self.strategy.trade['type'] != self.trade_type)):
+							self.trade_type = self.strategy.trade['type']
+							if (self.trade_type == 'short'):
+								zoom_s = self.strategy.zoom_s
+								leverage_s = int(self.strategy.leverage_s)
+							else:
+								zoom_l = self.strategy.zoom_l
+								leverage_l = int(self.strategy.leverage_l)
+							self.change_trade(leverage_s, leverage_l, zoom_s, zoom_l, j)
 
-								t = '\tSiguiendo a la estrategia: ' + self.strategy.NAME + ', ' + self.strategy.trade['type'] + ', ' + datetime.fromtimestamp(self.values[j]['time']).isoformat() + ', ' + str(self.values[j]['price']) + '\n\tleverage_s: ' + str(leverage_s) + '\n\tleverage_l: ' + str(leverage_l) + '\n\tzoom_s: ' + str(self.strategy.zoom_s) + '\n\tzoom_l: ' + str(self.strategy.zoom_l) + '\n\tfee short: ' + str(self.fee_short) + '\n\tfee long: ' + str(self.fee_long)
-								self.fee_p_a += (self.fee_short + self.fee_long) * 0.5
-								self.fee_p_c += 1
+							t = '\tSiguiendo a la estrategia: ' + self.strategy.NAME + ', ' + self.strategy.trade['type'] + ', ' + datetime.fromtimestamp(self.values[j]['time']).isoformat() + ', ' + str(self.values[j]['price']) + '\n\tleverage_s: ' + str(leverage_s) + '\n\tleverage_l: ' + str(leverage_l) + '\n\tzoom_s: ' + str(self.strategy.zoom_s) + '\n\tzoom_l: ' + str(self.strategy.zoom_l) + '\n\tfee short: ' + str(self.fee_short) + '\n\tfee long: ' + str(self.fee_long)
+							self.fee_p_a += (self.fee_short + self.fee_long) * 0.5
+							self.fee_p_c += 1
 
-								for d in self.strategy.derivatives:
-									t2 = ''
-									if (d['wait_far_price_dif']):
-										t2 += 'far_price_dif >= ' + str(d['far_price_dif_s']) + ',' + str(d['far_price_dif_l'])
-									if (d['wait_zoom']):
-										t2 += 'zoom ' + str(d['min_zoom']['c']) + ' ' + str(d['min_zoom']['n'])
-									t += '\n\tstrategy derivatives, ' + d['position'] + ', ' + t2 + ', ' + str(d['coin2_balance']) + ' USD, investment: ' + str(d['total_investment']) + ', leverage: ' + str(int(d['leverage']))
-								for d in self.derivatives:
-									t += '\n\tderivatives, zoom ' + str(d['min_zoom']['c']) + ' ' + str(d['min_zoom']['n']) + ', ' + str(d['coin2_balance']) + ' USD, investment: ' + str(d['total_investment'])
+							for d in self.strategy.derivatives:
+								t2 = ''
+								if (d['wait_far_price_dif']):
+									t2 += 'far_price_dif >= ' + str(d['far_price_dif_s']) + ',' + str(d['far_price_dif_l'])
+								if (d['wait_zoom']):
+									t2 += 'zoom ' + str(d['min_zoom']['c']) + ' ' + str(d['min_zoom']['n'])
+								t += '\n\tstrategy derivatives, ' + d['position'] + ', ' + t2 + ', ' + str(d['coin2_balance']) + ' USD, investment: ' + str(d['total_investment']) + ', leverage: ' + str(int(d['leverage']))
+							for d in self.derivatives:
+								t += '\n\tderivatives, zoom ' + str(d['min_zoom']['c']) + ' ' + str(d['min_zoom']['n']) + ', ' + str(d['coin2_balance']) + ' USD, investment: ' + str(d['total_investment'])
 
-								t += '\n\tfee promedio: ' + str(self.fee_p_a / self.fee_p_c)
-								t += '\n\tleverage_l_ok: ' + str(self.strategy.l_l_ok) + ', leverage_l_no: ' + str(self.strategy.l_l_no)
-								t += '\n\tleverage_s_ok: ' + str(self.strategy.l_s_ok) + ', leverage_s_no: ' + str(self.strategy.l_s_no)
-								print(t)
-								self.prev_price = self.values[j]['price']
-							prev_value = self.values[j]['price']
-						# Cuando volvió a la normalidad. Se asigna el último 'pl'.
-						if (prev_time and ((self.values[j]['time'] - prev_time) >= self.prices_gap_tolerance_seconds)):
-							self.strategy.prev_pl -= (self.strategy.pl - aux_pl)
-						prev_time = self.values[j]['time']
-					# Antes del corte. Se toma el último 'pl'.
-					aux_pl = self.strategy.pl
-					aux_price = self.values[-1]['price']
-					if ((self.values[-1]['time'] + (self.timer * 10)) >= self.strategy.comp_last_timestamp):
-						print("Se habilita la actualización por si hay un nuevo 'comp'.")
-						self.db.update_trader(self, self.mode)
-					self.strategy.last_timestamp = self.db.last_price_in_list['time']
-					if ((self.values[-1]['time'] + (self.timer * 10)) >= self.strategy.comp_last_timestamp):
-						comp = self.db.update_strategy(self.strategy, self.mode)
-						if (comp and (self.strategy.comp_initial_config != comp['comp_initial_config'])):
-							self.strategy.comp_initial_config = comp['comp_initial_config']
-							self.strategy.comp_last_timestamp = float(comp['comp_last_timestamp'])
-							self.strategy.comp_prev_pl = comp['comp_prev_pl']
+							t += '\n\tfee promedio: ' + str(self.fee_p_a / self.fee_p_c)
+							t += '\n\tleverage_l_ok: ' + str(self.strategy.l_l_ok) + ', leverage_l_no: ' + str(self.strategy.l_l_no)
+							t += '\n\tleverage_s_ok: ' + str(self.strategy.l_s_ok) + ', leverage_s_no: ' + str(self.strategy.l_s_no)
+							print(t)
+							self.prev_price = self.values[j]['price']
+						prev_value = self.values[j]['price']
+					# Cuando volvió a la normalidad. Se asigna el último 'pl'.
+					if (prev_time and ((self.values[j]['time'] - prev_time) >= self.prices_gap_tolerance_seconds)):
+						self.strategy.prev_pl -= (self.strategy.pl - aux_pl)
+					prev_time = self.values[j]['time']
+				# Antes del corte. Se toma el último 'pl'.
+				aux_pl = self.strategy.pl
+				aux_price = self.values[-1]['price']
+				if ((self.values[-1]['time'] + (self.timer * 10)) >= self.strategy.comp_last_timestamp):
+					print("Se habilita la actualización por si hay un nuevo 'comp'.")
+					self.db.update_trader(self)
 				self.strategy.last_timestamp = self.db.last_price_in_list['time']
-			if (self.db.last_price_in_list): # Cuando no hay más precios para testear.
-				self.db.update_trader(self, self.mode)
-				self.strategy.ready_to_use = True
-				self.strategy.last_timestamp = self.db.last_price_in_list['time']
-				self.db.update_strategy(self.strategy, self.mode, update_comp = False)
-			print('No hay más precios para testear.')
-		else:
-			print('Obteniendo precios...')
-			omit = False
-			first_timestamp_in_list = None
-			if (self.simulate_trading):
-				trader_log_file_path = 'logs/' + self.coin1 + '-' + self.coin2 + '_' + str(self.timer) + '_' + datetime.now().isoformat() + '.txt'
-				prev_position_best_derivative = 'close' # Cambiar si es necesario al reiniciar el bot en tiempo real.
-				prev_position_best_spot = None
-				while (True):
-					txt = ''
-					prev_omitted = False
-					if (omit):
-						prev_omitted = True
-					omit = False
-					l = len(self.values)
-					new = self.get_price()
-					while (not new):
-						new = self.get_price()
-						time.sleep(1)
-					j = len(self.values) - 1
-					if (len(self.values) > 1):
-						omit = self.validate_dif(j, prev_omitted)
-
-					if (not first_timestamp_in_list):
-						f = open(f'prices/{c1}-{c2}/lists.txt', 'a')
-						f.write(self.log_file_path + '\n')
-						f.close()
-						first_timestamp_in_list = new['time']
-
-					if ((((new['time'] - first_timestamp_in_list) / self.timer) > self.max_periods) or ((len(self.values) > 1) and ((new['time'] - self.values[-2]['time']) > self.prices_gap_tolerance_seconds))):
-						self.log_file_path = str(datetime.now().timestamp()) + '_' + self.config['price_source']
-
-						f = open(f'prices/{c1}-{c2}/lists.txt', 'a')
-						f.write(self.log_file_path + '\n')
-						f.close()
-
-						first_timestamp_in_list = new['time']
-
-					f = open(f'prices/{c1}-{c2}/{c1}-{c2}_{self.log_file_path}.txt', 'a')
-					f.write(str(new['time']) + ',' + str(new['price']) + '\n')
-					f.close()
-					f = open(f'prices/{c1}-{c2}/{c1}-{c2}_{self.log_file_path}_updated.txt', 'w')
-					f.write(str(datetime.now().timestamp()))
-					f.close()
-
-					self.last_timestamp = self.values[-1]['time']
-					if (l != len(self.values)):
-						if (not self.strategy):
-							f = open('config.json', 'r')
-							self.config = json.JSONDecoder().decode(f.read())
-							f.close()
-							self.price_source = self.config['price_source']
-							self.strategy, m = self.db.get_strategy(
-								self.timer,
-								self.coin1,
-								self.coin2,
-								config = self.config,
-								mode = self.mode
-							)
-							if (self.strategy):
-								if (m):
-									self.p_s_u = m['p_s_u']
-									self.p_c_u = m['p_c_u']
-									self.p_s_d = m['p_s_d']
-									self.p_c_d = m['p_c_d']
-									self.e_p_u = m['e_p_u']
-									self.e_p_d = m['e_p_d']
-								self.initial_config = self.strategy.initial_config
-						else: # Ya se estaba utilizando un trader.
-							new_strategy, m = self.db.get_strategy(
-								self.timer,
-								self.coin1,
-								self.coin2,
-								config = self.config,
-								mode = self.mode
-							)
-							if (not self.strategy.trade['type']):
-								self.strategy.initial_config = ''
-								print(new_strategy.trade['type'])
-							if (new_strategy and (new_strategy.initial_config != self.strategy.initial_config)): # Nuevo trader.
-								t = datetime.fromtimestamp(self.values[j]['time']).isoformat() + ' cambio de estrategia: '
-								t += json.JSONEncoder().encode(new_strategy.initial_config) + '\n'
-								txt += t + '\n'
-								print(t)
-
-								self.strategy = new_strategy
-								if (m):
-									self.p_s_u = m['p_s_u']
-									self.p_c_u = m['p_c_u']
-									self.p_s_d = m['p_s_d']
-									self.p_c_d = m['p_c_d']
-									self.e_p_u = m['e_p_u']
-									self.e_p_d = m['e_p_d']
-								self.initial_config = self.strategy.initial_config
-						if (self.strategy):
-							if (not omit):
-								self.strategy.change_status(self.values, j, self.fee_short, self.fee_long)
-								self.db.update_strategy(self.strategy, self.mode)
-								if (self.strategy.trade['type'] and (self.strategy.trade['type'] != self.trade_type)):
-									self.trade_type = self.strategy.trade['type']
-
-									if (self.trade_type == 'short'):
-										zoom_s = self.strategy.zoom_s
-										leverage_s = int(self.strategy.leverage_s)
-									else:
-										zoom_l = self.strategy.zoom_l
-										leverage_l = int(self.strategy.leverage_l)
-
-									self.change_trade(leverage_s, leverage_l, zoom_s, zoom_l, j)
-									t = '\tSiguiendo a la estrategia: ' + self.strategy.NAME + ', ' + self.strategy.trade['type'] + ', ' + str(datetime.fromtimestamp(self.values[j]['time']).isoformat()) + ', ' + str(self.values[j]['price'])
-									txt += t + '\n'
-									for d in self.strategy.derivatives:
-										t2 = ''
-										if (d['wait_far_price_dif']):
-											t2 += 'far_price_dif >= ' + str(d['far_price_dif_s']) + ',' + str(d['far_price_dif_l'])
-										if (d['wait_zoom']):
-											t2 += 'zoom ' + str(d['min_zoom']['c']) + ' ' + str(d['min_zoom']['n'])
-										t += '\n\tstrategy derivatives, ' + d['position'] + ', ' + t2 + ', ' + str(d['coin2_balance']) + ' USD, investment: ' + str(d['total_investment']) + ', leverage: ' + str(int(d['leverage']))
-										txt += t + '\n'
-									for d in self.derivatives:
-										t += '\n\tderivatives, zoom ' + str(d['min_zoom']['c']) + ' ' + str(d['min_zoom']['n']) + ', ' + str(d['coin2_balance']) + ' USD, investment: ' + str(d['total_investment'])
-										txt += t + '\n'
-
-									t += '\n\tleverage_s: ' + str(leverage_s) + '\n'
-									t += '\tleverage_l: ' + str(leverage_l) + '\n'
-									t += '\tzoom_s: ' + str(self.strategy.zoom_s) + '\n'
-									t += '\tzoom_l: ' + str(self.strategy.zoom_l) + '\n'
-									t += '\tfee short: ' + str(self.fee_short) + '\n\tfee long: ' + str(self.fee_long) + '\n'
-									t += '\tleverage_l_ok: ' + str(self.strategy.l_l_ok) + ', leverage_l_no: ' + str(self.strategy.l_l_no) + '\n'
-									t += '\tleverage_s_ok: ' + str(self.strategy.l_s_ok) + ', leverage_s_no: ' + str(self.strategy.l_s_no) + '\n'
-
-									txt += t + '\n'
-									print(t)
-
-								prev_status = {}
-								try:
-									f = open('status.json', 'r')
-									prev_status = json.JSONDecoder().decode(f.read())
-									f.close()
-								except:
-									0
-
-								max_d = 0
-								max_d_spot = -1
-								ds = self.strategy.derivatives
-
-								if (prev_status and ((self.coin1 + '-' + self.coin2) in prev_status.keys()) and ('derivatives' in prev_status[self.coin1 + '-' + self.coin2].keys())):
-									ds = prev_status[self.coin1 + '-' + self.coin2]['derivatives']
-
-								for i in range(len(ds)):
-									if ((ds[i]['coin2_balance'] - ds[i]['total_investment']) > (ds[max_d]['coin2_balance'] - ds[max_d]['total_investment'])):
-										max_d = i
-									if ((not ds[i]['close_on_close']) and ((max_d_spot == -1) or ((ds[i]['coin2_balance'] - ds[i]['total_investment']) > (ds[max_d_spot]['coin2_balance'] - ds[max_d_spot]['total_investment'])))):
-										max_d_spot = i
-
-								if (ds[max_d_spot]['position'] != prev_position_best_spot):
-									prev_position_best_spot = ds[max_d_spot]['position']
-								if (ds[max_d]['position'] != prev_position_best_derivative):
-									prev_position_best_derivative = ds[max_d]['position']
-									f = open('trades_' + self.coin1 + '-' + self.coin2 + '.json', 'a')
-									f.write(datetime.fromtimestamp(self.values[j]['time']).isoformat() + ',' + ds[max_d]['position'] + ',' + str(self.values[j]['price']) + ',' + str(int(ds[max_d]['leverage'])) + '\n')
-									f.close()
-
-								prev_status[self.coin1 + '-' + self.coin2] = {'trade_type' : self.trade_type, 'leverage_s' : leverage_s, 'leverage_l' : leverage_l, 'zoom_s' : self.strategy.zoom_s, 'zoom_l' : self.strategy.zoom_l, 'derivatives' : self.strategy.derivatives}
-								f = open('status.json', 'w')
-								f.write(json.JSONEncoder().encode(prev_status))
-								f.close()
-					self.db.update_trader(self, self.mode)
-
-					f = open(trader_log_file_path, 'a')
-					f.write(txt)
-					f.close()
-
-					time.sleep(self.timer)
-			else:
-				print('Obteniendo precios...')
-				while (True):
-					new = self.get_price()
-					while (not new):
-						new = self.get_price()
-						time.sleep(1)
-					j = len(self.values) - 1
-
-					if (not first_timestamp_in_list):
-						f = open(f'prices/{c1}-{c2}/lists.txt', 'a')
-						f.write(self.log_file_path + '\n')
-						f.close()
-						first_timestamp_in_list = new['time']
-
-					if ((((new['time'] - first_timestamp_in_list) / self.timer) > self.max_periods) or ((len(self.values) > 1) and ((new['time'] - self.values[-2]['time']) > self.prices_gap_tolerance_seconds))):
-						self.log_file_path = str(datetime.now().timestamp()) + '_' + self.config['price_source']
-						f = open(f'prices/{c1}-{c2}/lists.txt', 'a')
-						f.write(self.log_file_path + '\n')
-						f.close()
-
-						first_timestamp_in_list = new['time']
-
-					f = open(f'prices/{c1}-{c2}/{c1}-{c2}_{self.log_file_path}.txt', 'a')
-					f.write(str(new['time']) + ',' + str(new['price']) + '\n')
-					f.close()
-					f = open(f'prices/{c1}-{c2}/{c1}-{c2}_{self.log_file_path}_updated.txt', 'w')
-					f.write(str(datetime.now().timestamp()))
-					f.close()
-					time.sleep(self.timer)
-if ('start' in sys.argv):
-	bot = BorderBot(sys.argv[1:], 'real_time')
-	bot.start()
+				if ((self.values[-1]['time'] + (self.timer * 10)) >= self.strategy.comp_last_timestamp):
+					comp = self.db.update_strategy(self.strategy)
+					if (comp and (self.strategy.comp_initial_config != comp['comp_initial_config'])):
+						self.strategy.comp_initial_config = comp['comp_initial_config']
+						self.strategy.comp_last_timestamp = float(comp['comp_last_timestamp'])
+						self.strategy.comp_prev_pl = comp['comp_prev_pl']
+			self.strategy.last_timestamp = self.db.last_price_in_list['time']
+		# Cuando no hay más precios para testear.
+		if (self.db.last_price_in_list):
+			self.db.update_trader(self)
+			self.strategy.ready_to_use = True
+			self.strategy.last_timestamp = self.db.last_price_in_list['time']
+			self.db.update_strategy(self.strategy, update_comp = False)
+		print('No hay más precios para testear.')
