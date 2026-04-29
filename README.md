@@ -15,9 +15,9 @@ Usted debe ser cauteloso con esta herramienta o con cualquier otra.
 Le invito a seguirme en mi canal https://odysee.com/$/invite/@EspeculadorFinanciero:7
 Allí hay explicaciones más detalladas del bot.
 
-## Explicación de "borderbot.py" y "client.py"
+## Explicación de "borderbot_real_time.py" y "client.py"
 
-Cuando simula trading en tiempo real ("borderbot.py") o hace backtesting ("client.py").
+Cuando simula trading en tiempo real ("borderbot_real_time.py") o hace backtesting ("client.py").
 El bot selecciona la estrategia que supuestamente está teniendo mejor profit o menor loss (la variable "pl").
 
 La fee se calcula en base a una fee mínima más un promedio y dando cierta prioridad a la volatilidad más reciente.
@@ -61,7 +61,7 @@ git clone https://github.com/leoNoguera/borderbot.git
 
 ## Funcionalidades
   - [Configuración del bot](#config.json)
-  - [Obtención de precios y ejecución de la simulación en tiempo real](#borderbot.py)
+  - [Obtención de precios y ejecución de la simulación en tiempo real](#borderbot_real_time.py)
   - [Servidor](#server.py)
   - [Cliente](#client.py)
   - [Donaciones](#donaciones)
@@ -171,19 +171,19 @@ Configuración de ejemplo:
 ```
 
 
-## borderbot.py
+## borderbot_real_time.py
 
 Para almacenar los precios de un par de activos en archivos:
 ```
-python3 borderbot.py DRIFT-USDT 0 start
+python3 borderbot_real_time.py DRIFT-USDT 0
 ```
 
 Para almacenar los precios de un par de activos en archivos y además simular trading en tiempo real:
 ```
-python3 borderbot.py DRIFT-USDT 1 start
+python3 borderbot_real_time.py DRIFT-USDT 1
 ```
 
-Usted verá que al ejecutar 'borderbot.py' o client.py' verá lineas con algo similar a:
+Usted verá que al ejecutar 'borderbot_real_time.py' o client.py' verá lineas con algo similar a:
 
 strategy derivatives, long, far_price_dif ...
 strategy derivatives, long, zoom >= ...
