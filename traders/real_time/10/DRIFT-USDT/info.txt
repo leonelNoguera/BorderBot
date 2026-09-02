@@ -1,1 +1,0 @@
-Aquí se guardan los traders en tiempo real con timer de 10 segundos.
