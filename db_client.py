@@ -2,7 +2,6 @@ from datetime import datetime
 import random
 import json
 import strategy
-
 class Db(object):
 	def __init__(self, config = None, coin1 = None, coin2 = None, socket = None):
 		super(Db, self).__init__()
@@ -18,13 +17,11 @@ class Db(object):
 		self.values_dict = {}
 		self.reset_values()
 
-
 	def reset_values(self):
 		self.init_timestamp = 0
 		self.last_price_in_list = None
 		self.db_update_timestamp = 0
 		self.init_timestamps = []
-
 
 	def read_prices_local(self, it):
 		fixed_time_prices = []
@@ -61,7 +58,6 @@ class Db(object):
 					0
 		return (fixed_time_prices, more_data, file_exists, t)
 
-
 	def get_prices_local(self, prices_gap_tolerance_seconds, st_last_timestamp):
 		c1 = self.coin1
 		c2 = self.coin2
@@ -71,6 +67,7 @@ class Db(object):
 			self.last_check = datetime.now().timestamp()
 		f = None
 		if (len(self.init_timestamps) < 2):
+			#self.times('get_init_timestamps')
 			# Obtener también todos los init_timestamp de las listas y que sean posteriores al 'last_timestamp'. Luego se buscarán los archivos de texto que tengan dichos timestamps en el nombre.
 			self.socket.send(json.JSONEncoder().encode({'type' : 'SQL', 'sub-type' : 'get_init_timestamps', 'first' : True, 'st_last_timestamp' : st_last_timestamp}).encode())
 			msg_in = json.JSONDecoder().decode(self.socket.recv(5000).decode())
@@ -159,9 +156,9 @@ class Db(object):
 				return (fixed_time_prices, more_data)
 		return ([], False)
 
-
 	def get_prices(self, last_timestamp = 0, prices_gap_tolerance_seconds = None):
 		self.init_timestamp = last_timestamp
+		# Verificar si la lista correspondiente está almacenada en archivos locales.
 		fixed_time_prices, more_data = self.get_prices_local(prices_gap_tolerance_seconds, last_timestamp)
 		return (fixed_time_prices, more_data)
 
@@ -241,7 +238,7 @@ class Db(object):
 				msg_in = json.JSONDecoder().decode(msg_in)
 			except:
 				pass
-		v = strategy.Strategy(timer, coin1, coin2, config = config2, name = 'bs,' + str(msg_in['initial_config']['sl_initial_dif_s']) + ',' + str(msg_in['initial_config']['sl_initial_dif_l']))
+		v = strategy.Strategy(timer, coin1, coin2, config = config2, name = 'bs_' + str(msg_in['initial_config']['sl_initial_dif_s']) + ',' + str(msg_in['initial_config']['sl_initial_dif_l']))
 		self.set_strategy(msg_in, v, change_comp = True)
 		return v
 

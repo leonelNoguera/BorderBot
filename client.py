@@ -6,17 +6,18 @@ import json
 
 class Client(object):
     def __init__(self, args):
-        self.pair = 'DRIFT-USDT'
+        self.pair = None
         port = 7000
         host = 'localhost'
         if (args and (len(args) > 3)):
             self.pair = args[0]
             host = args[2]
             port = int(args[3])
+            client_name = args[4]
             self.socket = socket.socket()
             self.socket.connect((host, port))
             recv = json.JSONDecoder().decode(self.socket.recv(2048).decode())
-            self.socket.send(json.JSONEncoder().encode({'type' : 'config', 'sub-type' : 'set_pair', 'pair' : self.pair}).encode())
+            self.socket.send(json.JSONEncoder().encode({'type' : 'config', 'sub-type' : 'set_pair', 'pair' : self.pair, 'client_name' : client_name}).encode())
             self.socket.recv(2048)
             config = ''
             self.socket.send(json.JSONEncoder().encode({'type' : 'config', 'sub-type' : 'get_config'}).encode())

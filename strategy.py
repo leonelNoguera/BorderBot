@@ -10,7 +10,7 @@ class Strategy():
 		self.last_timestamp = 0
 		self.timer = timer
 		self.coin1 = coin1
-		self.coin2= coin2
+		self.coin2 = coin2
 		self.ready_to_use = 0
 
 		self.trade = {'type': 'short', 'prev_type': '', 'time': 0,
@@ -54,6 +54,7 @@ class Strategy():
 		self.far_price_dif_s = config[self.coin1 + '-' + self.coin2]['far_price_dif_s']
 		self.far_price_dif_l = config[self.coin1 + '-' + self.coin2]['far_price_dif_l']
 		self.min_balance = config['min_balance']
+		self.max_loss = config[self.coin1 + '-' + self.coin2]['max_loss']
 
 		self.last_pl_priority = config[self.coin1 + '-' + self.coin2]['last_pl_priority']
 
@@ -128,24 +129,24 @@ class Strategy():
 				self.derivatives[i]['far_price_dif_s'] = self.far_price_dif_s
 				self.derivatives[i]['far_price_dif_l'] = self.far_price_dif_l
 
-		config_ok = False
-		while (not config_ok):
-			config_ok = True
-			f = open('config_cpu_temp.json', 'r')
-			d = f.read()
-			try:
-				if (self.config_cpu_temp):
-					self.config_cpu_temp['max_temp'] = json.JSONDecoder().decode(d)['max_temp']
-					self.config_cpu_temp['no_pause_periods'] = json.JSONDecoder().decode(d)['no_pause_periods']
-				else:
-					self.config_cpu_temp = json.JSONDecoder().decode(d)
-			except:
-				config_ok = False
-			f.close()
+		f = open('config_cpu_temp.json', 'r')
+		d = f.read()
+		try:
 			if (self.config_cpu_temp):
-				f = open('config_cpu_temp.json', 'w')
-				f.write(json.JSONEncoder().encode(self.config_cpu_temp))
-				f.close()
+				self.config_cpu_temp['client_max_temp'] = json.JSONDecoder().decode(d)['client_max_temp']
+				self.config_cpu_temp['no_pause_periods'] = json.JSONDecoder().decode(d)['no_pause_periods']
+			else:
+				self.config_cpu_temp = json.JSONDecoder().decode(d)
+			f.close()
+		except:
+			f.close()
+			f = open('default_config_cpu_temp.json', 'r')
+			self.config_cpu_temp = json.JSONDecoder().decode(f.read())
+			f.close()
+		if (self.config_cpu_temp):
+			f = open('config_cpu_temp.json', 'w')
+			f.write(json.JSONEncoder().encode(self.config_cpu_temp))
+			f.close()
 		self.config_cpu_temp['total_client_pause_seconds'] = 0
 		self.config_cpu_temp['client_pause_seconds'] = 0
 
@@ -170,6 +171,7 @@ class Strategy():
 			if (self.trade['type'] == 'long'):
 				self.stop_loss = values[i]['price'] * (1 - self.sl_initial_dif_l)
 		if (not self.omit):
+			#prev_pl_updated = False
 			if (self.trade['prev_type'] != self.trade['type']):
 				self.trade['time'] = float(values[i]['time'])
 				p = self.trade['price']
@@ -268,6 +270,7 @@ class Strategy():
 				self.omit_aprox_count = 0
 
 			flag = False
+			# Cambio de trade, en caso de ser necesario.
 			if (self.stop_loss and (((self.trade['type'] == 'long') and (values[i]['price'] <= self.stop_loss)) or ((self.trade['type'] == 'short') and (values[i]['price'] >= self.stop_loss)))):
 				self.far_price = values[i]['price']
 				self.trade['prev_price'] = self.trade['price']
@@ -340,9 +343,9 @@ class Strategy():
 							close_position = False
 							if ((d['position'] != 'close') and (d['position'] != self.trade['type'])):
 								coin2_balance = d['coin2_balance'] * (1 + dif2) * (1 - (fee * 0.5 * int(leverage)))
-								if (coin2_balance <= 0.4):
+								if (coin2_balance < (d['coin2_balance'] * (1 - self.max_loss))):
 									close_position = True
-									print('Se cerrará la posición por liquidación.')
+									print('Se cerrará la posición por liquidación o por superar el límite de pérdida.')
 								else:
 									if (d['close_on_close']):
 										close_position = True
@@ -401,7 +404,7 @@ class Strategy():
 									print('strategy derivatives, ' + d['position'] + t2 + ', ' + str(d['coin2_balance']) + ' USD, investment: ' + str(d['total_investment']) + ', ' + datetime.fromtimestamp(values[i]['time']).isoformat() + ', open price: ' + str(d['open_price']) + ', leverage: ' + str(int(d['leverage'])))
 
 							if (d['coin2_balance'] >= 0):
-								if (d['coin2_balance'] <= 0.4):
+								if (d['coin2_balance'] <= 0.6):
 									d['coin2_balance'] += 1
 									d['total_investment'] += 1
 							else:
@@ -466,7 +469,7 @@ class Strategy():
 						) or
 						(
 							(trade_type == 'short') and
-							(
+							(# 90 < (100 * (1 - 0.005))
 								(values[i]['price'] < (self.trade['price'] * (1 - fee))) or
 								(
 									values[i]['price'] >= (self.trade['price'] * (1 + (self.sl_initial_dif_s * 0.25)))
@@ -475,8 +478,6 @@ class Strategy():
 						)
 					):
 						aprox = a * zoom_p * (((values[i]['time'] - float(self.trade['time'])) / self.timer) - self.omit_aprox_count)
-					else:
-						self.omit_aprox_count += (values[i]['time'] - values[i - 1]['time']) / self.timer
 
 					if ((not self.far_price) or (self.far_price and (m2 > l2))):
 						self.far_price = values[i]['price']
@@ -485,7 +486,7 @@ class Strategy():
 					if (trade_type == 'short'):
 						sl2 = self.trade['price'] * (1 + self.sl_initial_dif_s - self.sl_reduced_dif_s)
 
-					if (((trade_type == 'long') and (sl < sl2)) or ((trade_type == 'short') and (sl > sl2))): #No está en la zona de break even o mejor.
+					if (((trade_type == 'long') and (sl < sl2)) or ((trade_type == 'short') and (sl > sl2))): # No está en la zona de break even ni mejor que esa.
 						sl_p = self.sl_initial_dif_s
 						if (trade_type == 'long'):
 							sl_p = self.sl_initial_dif_l
@@ -514,7 +515,7 @@ class Strategy():
 		self.c_periods += 1
 		if (self.c_periods == self.config_cpu_temp['no_pause_periods']):
 			temp = psutil.sensors_temperatures()['acpitz'][0].current
-			if (temp >= self.config_cpu_temp['max_temp']):
+			if (temp >= self.config_cpu_temp['client_max_temp']):
 				self.config_cpu_temp['client_pause_seconds'] += 1
 				self.config_cpu_temp['total_client_pause_seconds'] += 1
 				print('Pausa de ' + str(self.config_cpu_temp['client_pause_seconds']) + ' segundos para enfriar procesador.')

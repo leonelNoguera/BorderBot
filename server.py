@@ -35,6 +35,7 @@ def threaded_client(connection):
 	timer = 10
 	coin1 = None
 	coin2 = None
+	client_name = None
 	while (connected):
 		r = conn.recv(5000)
 		if (r.decode('utf-8')):
@@ -54,33 +55,35 @@ def threaded_client(connection):
 						if (len(config_list)):
 							config_l += config_list.pop(0)
 					reply = json.JSONEncoder().encode({'reply' : 'get_config', 'config' : config_l})
-					db.set_config(config, 'backtesting', coin1, coin2)
+					db.set_config(config, 'backtesting', coin1, coin2, client_name)
 					connection.send(str.encode(reply))
 				if (data['sub-type'] == 'set_pair'):
 					coin1 = data['pair'].split('-')[0]
 					coin2 = data['pair'].split('-')[1]
+					client_name = data['client_name']
+					#bot = borderbot.BorderBot([data['pair']], 'real_time')
 					connection.send(str.encode('{}'))
 
 			if (data and (data['type'] == 'SQL')):
 				if (data['sub-type'] == 'get_next_strategy_to_test'):
-					config_ok = False
-					while (not config_ok):
-						config_ok = True
-						f = open('config_cpu_temp.json', 'r')
-						d = f.read()
-						try:
-							if (config_cpu_temp):
-								config_cpu_temp['max_temp'] = json.JSONDecoder().decode(d)['max_temp']
-								config_cpu_temp['no_pause_periods'] = json.JSONDecoder().decode(d)['no_pause_periods']
-							else:
-								config_cpu_temp = json.JSONDecoder().decode(d)
-						except:
-							config_ok = False
-						f.close()
+					f = open('config_cpu_temp.json', 'r')
+					d = f.read()
+					try:
 						if (config_cpu_temp):
-							f = open('config_cpu_temp.json', 'w')
-							f.write(json.JSONEncoder().encode(config_cpu_temp))
-							f.close()
+							config_cpu_temp['server_max_temp'] = json.JSONDecoder().decode(d)['server_max_temp']
+							config_cpu_temp['no_pause_periods'] = json.JSONDecoder().decode(d)['no_pause_periods']
+						else:
+							config_cpu_temp = json.JSONDecoder().decode(d)
+						f.close()
+					except:
+						f.close()
+						f = open('default_config_cpu_temp.json', 'r')
+						config_cpu_temp = json.JSONDecoder().decode(f.read())
+						f.close()
+					if (config_cpu_temp):
+						f = open('config_cpu_temp.json', 'w')
+						f.write(json.JSONEncoder().encode(config_cpu_temp))
+						f.close()
 					config_cpu_temp['total_server_pause_seconds'] = 0
 					config_cpu_temp['server_pause_seconds'] = 0
 					#{"status" : "on"}
@@ -129,7 +132,7 @@ def threaded_client(connection):
 					connection.send(str.encode(reply))
 				if (data['sub-type'] == 'get_prices'):
 					temp = psutil.sensors_temperatures()['acpitz'][0].current
-					if (temp >= config_cpu_temp['max_temp']):
+					if (temp >= config_cpu_temp['server_max_temp']):
 						config_cpu_temp['server_pause_seconds'] += 1
 						config_cpu_temp['total_server_pause_seconds'] += config_cpu_temp['server_pause_seconds']
 						print('Pausa de ' + str(config_cpu_temp['server_pause_seconds']) + ' segundos para enfriar procesador.')

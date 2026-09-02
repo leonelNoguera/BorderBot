@@ -21,12 +21,15 @@ class BorderBot(object):
 			self.timer = config['timer']
 			self.sleep_timer = config['timer']
 
+		self.price_source = self.config['price_source']
 		self.simulate_trading = self.config['simulate_trading']
 		if (len(args)):
 			self.coin1 = args[0].split('-')[0]
 			self.coin2 = args[0].split('-')[1]
 			if (len(args) > 1):
 				self.simulate_trading = int(args[1])
+			if (len(args) > 2):
+				self.price_source = args[2]
 		else:
 			self.coin1 = self.config['pair'].split('-')[0]
 			self.coin2 = self.config['pair'].split('-')[1]
@@ -37,8 +40,6 @@ class BorderBot(object):
 		self.last_dif_t = self.config[self.coin1 + '-' + self.coin2]['last_dif_timestamp']
 
 		self.derivatives = [{'position' : 'close', 'coin2_balance' : 1, 'min_zoom' : {'c' : '>=', 'n' : 0}, 'total_investment' : 1}]
-
-		self.price_source = self.config['price_source']
 
 		if (self.mode == 'backtesting'):
 			self.price_source = 'db'
@@ -68,28 +69,13 @@ class BorderBot(object):
 		self.fee_short = self.min_fee
 		self.prices_gap_tolerance_seconds = self.config['prices_gap_tolerance_seconds']
 		self.min_balance = self.config['min_balance']
-
+		self.link = None
 
 	def get_price(self):
 		"""Se obtienen los precios de Jupiter y los guarda en el array self.values"""
 		try:
 			soup = BeautifulSoup(requests.get(self.link, headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}, timeout = 5).content.decode(), 'html.parser')
 			html = soup.decode()
-			if (self.price_source == 'coinmarketcap'):
-				t = 'The live Drift price today is $'
-				if (self.coin1 == 'ETH'):
-					t = 'The live Ethereum price today is $'
-				if (self.coin1 == 'WCT'):
-					t = 'The live WalletConnect Token price today is $'
-				if (self.coin1 == 'BCH'):
-					t = 'The live Bitcoin Cash price today is $'
-				if (self.coin1 == 'SOL'):
-					t = 'The live Solana price today is $'
-				new = {'time' : datetime.now().timestamp(), 'price' : float(html.split(t)[1].split(' ')[0].replace(',',''))}
-				self.values.append(new)
-				if (not self.strategy):
-					print(datetime.fromtimestamp(new['time']).isoformat() + ', ' + str(new['price']))
-				return new
 			if (self.price_source == 'jupiter'):
 				try:
 					price = float(json.JSONDecoder().decode(html)[self.config[self.coin1 + '-' + self.coin2]['id']]['usdPrice'])
@@ -110,22 +96,10 @@ class BorderBot(object):
 		"""Se inicia el bot, en tiempo real o en backtesting"""
 		self.values = []
 		self.trade_type = None
-		if (self.price_source == 'coinmarketcap'):
-			currency = 'drift'
-			if (self.coin1 == 'ETH'):
-				currency = 'ethereum'
-			if (self.coin1 == 'WCT'):
-				currency = 'walletconnect-token'
-			if (self.coin1 == 'BCH'):
-				currency = 'bitcoin-cash'
-			if (self.coin1 == 'SOL'):
-				currency = 'solana'
-			self.link = 'https://coinmarketcap.com/currencies/' + currency + '/'
 		if (self.price_source == 'jupiter'):
 			self.link = 'https://lite-api.jup.ag/price/v3?ids=' + self.config[self.coin1 + '-' + self.coin2]['id']
 		if (self.db):
 			self.derivatives = [{'position' : 'close', 'coin2_balance' : 1, 'min_zoom' : {'c' : '>=', 'n' : 0}, 'total_investment' : 1}]
-			#self.db.reset_values()
 		self.analyze()
 
 
@@ -259,7 +233,7 @@ class BorderBot(object):
 							d['position'] = trade_type
 
 					if (d['coin2_balance'] >= 0):
-						if (d['coin2_balance'] <= 0.4):
+						if (d['coin2_balance'] <= self.config['min_balance']):
 							d['coin2_balance'] += 1
 							d['total_investment'] += 1
 					else:
@@ -316,7 +290,6 @@ class BorderBot(object):
 
 					first_timestamp_in_list = new['time']
 
-				#print(f'Lista en: prices/{c1}-{c2}/{c1}-{c2}_{self.log_file_path}.txt')
 				f = open(f'prices/{c1}-{c2}/{c1}-{c2}_{self.log_file_path}.txt', 'a')
 				f.write(str(new['time']) + ',' + str(new['price']) + '\n')
 				f.close()
@@ -432,15 +405,31 @@ class BorderBot(object):
 								if ((not ds[i]['close_on_close']) and ((max_d_spot == -1) or ((ds[i]['coin2_balance'] - ds[i]['total_investment']) > (ds[max_d_spot]['coin2_balance'] - ds[max_d_spot]['total_investment'])))):
 									max_d_spot = i
 
+							max_l = self.config[self.coin1 + '-' + self.coin2]['high_leverage_max']
 							if (ds[max_d_spot]['position'] != prev_position_best_spot):
+								pos = 'buy'
+								if (ds[max_d_spot]['position'] != 'long'):
+									pos = 'sell'
+								p_sell = 0
+
+								p_sell = 50 + (self.strategy.leverage_s / max_l * 50)
+								if (pos == 'buy'):
+									p_sell = 100 - (50 + (self.strategy.leverage_l / max_l * 50))
+
+								if (ds[max_d]['position'] == 'close'):
+									p_sell = 50
+
 								prev_position_best_spot = ds[max_d_spot]['position']
+								f = open('trades_spot_' + self.coin1 + '-' + self.coin2 + '.json', 'a')
+								f.write(datetime.fromtimestamp(self.values[j]['time']).isoformat() + ',' + str(round((100 - p_sell), 2)) + ',' + str(round(p_sell, 2)) + ',' + pos + ',' + str(self.values[j]['price']) + ',' + str(self.strategy.stop_loss) + '\n')
+								f.close()
 							if (ds[max_d]['position'] != prev_position_best_derivative):
 								prev_position_best_derivative = ds[max_d]['position']
 								f = open('trades_' + self.coin1 + '-' + self.coin2 + '.json', 'a')
-								f.write(datetime.fromtimestamp(self.values[j]['time']).isoformat() + ',' + ds[max_d]['position'] + ',' + str(self.values[j]['price']) + ',' + str(int(ds[max_d]['leverage'])) + '\n')
+								f.write(datetime.fromtimestamp(self.values[j]['time']).isoformat() + ',' + ds[max_d]['position'] + ',' + str(self.values[j]['price']) + ',' + str(int(ds[max_d]['leverage'])) + ',' + str(self.strategy.stop_loss) + '\n')
 								f.close()
 
-							prev_status[self.coin1 + '-' + self.coin2] = {'trade_type' : self.trade_type, 'leverage_s' : leverage_s, 'leverage_l' : leverage_l, 'zoom_s' : self.strategy.zoom_s, 'zoom_l' : self.strategy.zoom_l, 'derivatives' : self.strategy.derivatives}
+							prev_status[self.coin1 + '-' + self.coin2] = {'trade_type' : self.trade_type, 'leverage_s' : leverage_s, 'leverage_l' : leverage_l, 'zoom_s' : self.strategy.zoom_s, 'zoom_l' : self.strategy.zoom_l, 'derivatives' : self.strategy.derivatives, 'high_leverage_max' : max_l, 'stop_loss' : self.strategy.stop_loss}
 							f = open('status.json', 'w')
 							f.write(json.JSONEncoder().encode(prev_status))
 							f.close()

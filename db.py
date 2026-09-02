@@ -7,7 +7,7 @@ class Db(object):
 	def __init__(self):
 		super(Db, self).__init__()
 
-	def set_config(self, config = None, mode = None, coin1 = None, coin2 = None):
+	def set_config(self, config = None, mode = None, coin1 = None, coin2 = None, client_name = None):
 		self.coin1 = coin1
 		self.coin2 = coin2
 		if (config and coin1 and coin2):
@@ -24,9 +24,13 @@ class Db(object):
 		self.last_price_in_list = None
 		self.db_update_timestamp = 0
 		self.init_timestamps = []
+		self.prev_far_price_dif_l = None
+		self.prev_far_price_dif_s = None
+		self.client_name = client_name
+		self.retest_btst_time = config[self.coin1 + '-' + self.coin2]['retest_btst_time']
+		self.prom_st = None
 
-
-	def get_init_timestamps(self, st_last_timestamp):
+	def get_init_timestamps(self, st_last_timestamp, last_t = False):
 		c1 = self.coin1
 		c2 = self.coin2
 		ts = []
@@ -34,35 +38,47 @@ class Db(object):
 		while (not lists_ok):
 			lists_ok = True
 			f = open(f'prices/{c1}-{c2}/lists.txt', 'r')
-			lists = f.read().strip().split('\n') # ['1769427124.441381_jupiter', '1769431333.370391_jupiter', ...]
+			lists = f.read().strip().split('\n')#['1769427124.441381_jupiter', '1769431333.370391_jupiter', ...]
 			f.close()
 			if (not lists):
 				lists_ok = False
-			for l in lists:
-				it = None
+			if (not last_t):
+				for l in lists:
+					it = None
+					try:
+						it = float(l.split('_')[0])
+					except:
+						lists_ok = False
+					src = ''
+					try:
+						src = '_' + l.split('_')[1]
+					except:
+						0
+					if (it):
+						#prices/JUP-USDT/JUP-USDT_1771508156.480666_jupiter.txt
+						f = open(f'prices/{c1}-{c2}/{c1}-{c2}_{l}.txt', 'r')
+						first_t = float(f.read().split('\n')[0].split(',')[0])#['1769427124.441381_jupiter', '1769431333.370391_jupiter', ...]
+						f.close()
+						if (first_t > st_last_timestamp):
+							updated_ok = False
+							while (not updated_ok):
+								updated_ok = True
+								try:
+									f = open(f'prices/{c1}-{c2}/{c1}-{c2}_{l}_updated.txt', 'r')
+									ts.append({'init_timestamp' : it, 'update_timestamp' : float(f.read().strip()), 'source' : src, 'first_t' : first_t})
+									f.close()
+								except:
+									updated_ok = False
+			if (last_t and lists_ok):
+				f = open(f'prices/{c1}-{c2}/{c1}-{c2}_{lists[-1]}_updated.txt', 'r')
+				t = f.read().strip()
 				try:
-					it = float(l.split('_')[0])
-				except:
-					lists_ok = False
-				src = ''
-				try:
-					src = '_' + l.split('_')[1]
+					last_t = float(t)
 				except:
 					0
-				if (it):
-					f = open(f'prices/{c1}-{c2}/{c1}-{c2}_{l}.txt', 'r') # prices/DRIFT-USDT/DRIFT-USDT_1771508156.480666_jupiter.txt
-					first_t = float(f.read().split('\n')[0].split(',')[0]) # ['1769427124.441381_jupiter', '1769431333.370391_jupiter', ...]
-					f.close()
-					if (first_t > st_last_timestamp):
-						updated_ok = False
-						while (not updated_ok):
-							updated_ok = True
-							try:
-								f = open(f'prices/{c1}-{c2}/{c1}-{c2}_{l}_updated.txt', 'r')
-								ts.append({'init_timestamp' : it, 'update_timestamp' : float(f.read().strip()), 'source' : src, 'first_t' : first_t})
-								f.close()
-							except:
-								updated_ok = False
+				f.close()
+				return last_t
+
 		return ts
 
 
@@ -124,72 +140,83 @@ class Db(object):
 		if (prev_status and prev_status[coin1 + '-' + coin2]['best_initial_config'] and (prev_status[coin1 + '-' + coin2]['timer'] == timer)):
 			v.set_config(prev_status[coin1 + '-' + coin2]['best_initial_config'])
 
-		r_or_d = False
-		list_ok = False
-		while (not list_ok):
-			list_ok = True
-			try:
-				f = open(f'strategies/backtesting/{timer}/{coin1}-{coin2}/list.txt', 'r')
-			except:
-				f = open(f'strategies/backtesting/{timer}/{coin1}-{coin2}/list.txt', 'w')
-				f.close()
-				f = open(f'strategies/backtesting/{timer}/{coin1}-{coin2}/list.txt', 'r')
-			lst = f.read().strip().split('\n')
+		# Generar un archivo con la lista de clientes.
+		path = f'strategies/backtesting/{timer}/{coin1}-{coin2}/clients_list/clients_list.txt'
+		clients = []
+		try:
+			f = open(path, 'r')
+			clients = f.read().strip().split('\n')
 			f.close()
-			if (not lst):
-				list_ok = False
-			for row in lst:
-				if (row):
-					st = None
-					try:
-						st = json.JSONDecoder().decode(row)
-					except:
-						list_ok = False
-						time.sleep(1)
+		except:
+			0
 
-			rows = []
-			r_or_d = False
-			for row in lst:
-				if (row):
-					st = None
-					try:
-						st = json.JSONDecoder().decode(row)
-					except:
-						list_ok = False
-						time.sleep(1)
-					if (st):
-						if (st['ready_to_use']):
-							rows.append(st)
-							r_or_d = True
-						if (st['initial_config'] == v.initial_config):
-							r_or_d = True
+		if (not self.client_name in clients):
+			f = open(path, 'a')
+			f.write(self.client_name + '\n')
+			f.close()
+			clients.append(self.client_name)
+		lst = []
+		for c in clients:
+			path = f'strategies/backtesting/{timer}/{coin1}-{coin2}/clients_list/{c}_list.txt'
+			try:
+				f = open(path, 'r')
+			except:
+				f = open(path, 'w')
+				f.close()
+				f = open(path, 'r')
+			lst.extend(f.read().strip().split('\n'))
+			f.close()
+		
 		s = None
 		btst = None
-		if (r_or_d): # Significa que ya había una estrategia ready_to_use o con la configuración por defecto.
-			d_comp = None
-			# Busca la última estrategia ready_to_use y con mayor pl.
-			try:
-				f = open(f'strategies/backtesting/{timer}/{coin1}-{coin2}/best_update.txt', 'r')
-			except:
-				f = open(f'strategies/backtesting/{timer}/{coin1}-{coin2}/best_update.txt', 'w')
-				f.close()
-				f = open(f'strategies/backtesting/{timer}/{coin1}-{coin2}/best_update.txt', 'r')
-			try:
-				btst = json.JSONDecoder().decode(f.read().strip().split('\n')[-1])
-			except:
-				pass
+		# Busca la última estrategia 'ready_to_use' y con mayor 'pl'.
+		try:
+			f = open(f'strategies/backtesting/{timer}/{coin1}-{coin2}/best_update.txt', 'r')
+		except:
+			f = open(f'strategies/backtesting/{timer}/{coin1}-{coin2}/best_update.txt', 'w')
 			f.close()
-			dif_initial_config = {'sl_s_dif' : 0, 'sl_l_dif' : 0, 'sl_reduced_dif_s' : 0, 'sl_reduced_dif_l' : 0, 'sl_initial_dif_s' : 0, 'sl_initial_dif_l' : 0, 'okno_inc_s' : 0, 'okno_inc_l' : 0, 'okno_dec_s' : 0, 'okno_dec_l' : 0, 'm_aprox_s' : 0, 'm_aprox_l' : 0, 'leverage_inc_s' : 0, 'leverage_inc_l' : 0, 'leverage_dec_s' : 0, 'leverage_dec_l' : 0, 'high_leverage_s' : 0, 'high_leverage_l' : 0, 'far_price_dif_s' : 0, 'far_price_dif_l' : 0}
-			if (btst):
-				v = strategy.Strategy(timer, coin1, coin2, config = config2, name = btst['name'])
-				v.set_config(btst['initial_config'])
+			f = open(f'strategies/backtesting/{timer}/{coin1}-{coin2}/best_update.txt', 'r')
+		try:
+			btst = json.JSONDecoder().decode(f.read().strip().split('\n')[-1])
+		except:
+			pass
+		f.close()
 
+		last_t = self.get_init_timestamps(None, True)
+		rows = []
+		r_or_d = False
+		retest_btst = False
+		for row in lst:
+			if (row):
+				st = None
+				try:
+					st = json.JSONDecoder().decode(row)
+				except:
+					0
+				if (st):
+					if (btst and (st['initial_config'] == btst['initial_config'])):
+						if ((st['ready_to_use']) and ((last_t - st['last_timestamp']) > self.retest_btst_time)):
+							retest_btst = True
+						else:
+							retest_btst = False
+
+					if (st['ready_to_use']):
+						rows.append(st)
+						r_or_d = True
+					if (st['initial_config'] == v.initial_config):
+						r_or_d = True
+		
+		dif_initial_config = {'sl_s_dif' : 0, 'sl_l_dif' : 0, 'sl_reduced_dif_s' : 0, 'sl_reduced_dif_l' : 0, 'sl_initial_dif_s' : 0, 'sl_initial_dif_l' : 0, 'okno_inc_s' : 0, 'okno_inc_l' : 0, 'okno_dec_s' : 0, 'okno_dec_l' : 0, 'm_aprox_s' : 0, 'm_aprox_l' : 0, 'leverage_inc_s' : 0, 'leverage_inc_l' : 0, 'leverage_dec_s' : 0, 'leverage_dec_l' : 0, 'high_leverage_s' : 0, 'high_leverage_l' : 0, 'far_price_dif_s' : 0, 'far_price_dif_l' : 0}
+		if (btst):
+			v = strategy.Strategy(timer, coin1, coin2, config = config2, name = btst['name'])
+			v.set_config(btst['initial_config'])
+			if (not retest_btst):
 				d = btst['derivatives']
 				max_d = (d[0]['coin2_balance'] - d[0]['total_investment'])
 				for i in range(1, len(d)):
 					if (d[i]['coin2_balance'] - d[i]['total_investment'] > max_d):
 						max_d = (d[i]['coin2_balance'] - d[i]['total_investment'])
-
+				d_comp = None
 				for row in rows:
 					if (row['initial_config'] == btst['comp_initial_config']):
 						d_comp = row['derivatives']
@@ -213,58 +240,100 @@ class Db(object):
 							if (((k == 'far_price_dif_s') or (k == 'far_price_dif_l')) and (max_d < max_d_comp)):
 								r = r * -1
 							dif_initial_config[k] = r
+		if (self.prom_st):
+			for k in (list(self.prom_st.keys())):
+				best_d = None
+				d_dec = None
+				d_eq = None
+				d_inc = None
+				if (dif_initial_config[k] == 1): # Se priorizaba incremento.
+					d = self.prom_st[k]
+					if (d['inc'][1] and (d['eq'][1] or d['dec'][1])): # Hay datos de alguna de las otras direcciones como para comparar.
+						d_inc = d['inc'][2] / d['inc'][1]
+						if (not d['eq'][1]):
+							d['eq'] = None
+						if (not d['dec'][1]):
+							d['dec'] = None
+						best_d = 1
+						if (d['eq']):
+							d_eq = d['eq'][2] / d['eq'][1]
+							if (d_eq > d_inc):
+								best_d = 0
+						if (d['dec'] and (d_eq != None)):
+							d_dec = d['dec'][2] / d['dec'][1]
+							if (d_dec > d_eq):
+								best_d = -1
+				if (dif_initial_config[k] == 0):
+					d = self.prom_st[k]
+					if (d['eq'][1] and (d['inc'][1] or d['dec'][1])):
+						d_eq = d['eq'][2] / d['eq'][1]
+						if (not d['inc'][1]):
+							d['inc'] = None
+						if (not d['dec'][1]):
+							d['dec'] = None
+						best_d = 0
+						if (d['inc']):
+							d_inc = d['inc'][2] / d['inc'][1]
+							if (d_inc > d_eq):
+								best_d = 1
+						if (d['dec'] and (d_inc != None)):
+							d_dec = d['dec'][2] / d['dec'][1]
+							if (d_dec > d_inc):
+								best_d = -1
 
+				if (dif_initial_config[k] == -1):
+					d = self.prom_st[k]
+					if (d['dec'][1] and (d['eq'][1] or d['inc'][1])):
+						d_dec = d['dec'][2] / d['dec'][1]
+						if (not d['eq'][1]):
+							d['eq'] = None
+						if (not d['inc'][1]):
+							d['inc'] = None
+						best_d = -1
+						if (d['eq']):
+							d_eq = d['eq'][2] / d['eq'][1]
+							if (d_eq > d_dec):
+								best_d = 0
+						if (d['inc'] and (d_dec != None)):
+							d_inc = d['inc'][2] / d['inc'][1]
+							if (d_inc > d_dec):
+								best_d = 1
+				if (best_d != None):
+					dif_initial_config[k] = best_d
+
+		if (not retest_btst):
 			st_in_files = True
 			while (st_in_files):
 				st_in_files = False
 				v.set_config(v.initial_config)
-				v.sl_reduced_dif_s = self.random_var(v.sl_reduced_dif_s, config2[coin1 + '-' + coin2]['sl_reduced_dif_min'], config2[coin1 + '-' + coin2]['sl_reduced_dif_max'], config2[coin1 + '-' + coin2]['sl_reduced_dif_decimals'], dif_initial_config['sl_reduced_dif_s'])
-				v.sl_reduced_dif_l = self.random_var(v.sl_reduced_dif_l, config2[coin1 + '-' + coin2]['sl_reduced_dif_min'], config2[coin1 + '-' + coin2]['sl_reduced_dif_max'], config2[coin1 + '-' + coin2]['sl_reduced_dif_decimals'], dif_initial_config['sl_reduced_dif_l'])
+				if (not self.prev_far_price_dif_l):
+					v.sl_reduced_dif_s = self.random_var(v.sl_reduced_dif_s, config2[coin1 + '-' + coin2]['sl_reduced_dif_min'], config2[coin1 + '-' + coin2]['sl_reduced_dif_max'], config2[coin1 + '-' + coin2]['sl_reduced_dif_decimals'], dif_initial_config['sl_reduced_dif_s'])
+					v.sl_reduced_dif_l = self.random_var(v.sl_reduced_dif_l, config2[coin1 + '-' + coin2]['sl_reduced_dif_min'], config2[coin1 + '-' + coin2]['sl_reduced_dif_max'], config2[coin1 + '-' + coin2]['sl_reduced_dif_decimals'], dif_initial_config['sl_reduced_dif_l'])
 
-				v.okno_dec_s = self.random_var(v.okno_dec_s, config2[coin1 + '-' + coin2]['okno_dec_min'], config2[coin1 + '-' + coin2]['okno_dec_max'], config2[coin1 + '-' + coin2]['okno_dec_decimals'], dif_initial_config['okno_dec_s'])
-				v.okno_inc_s = self.random_var(v.okno_inc_s, config2[coin1 + '-' + coin2]['okno_inc_min'], config2[coin1 + '-' + coin2]['okno_inc_max'], config2[coin1 + '-' + coin2]['okno_inc_decimals'], dif_initial_config['okno_inc_s'])
-				v.okno_dec_l = self.random_var(v.okno_dec_l, config2[coin1 + '-' + coin2]['okno_dec_min'], config2[coin1 + '-' + coin2]['okno_dec_max'], config2[coin1 + '-' + coin2]['okno_dec_decimals'], dif_initial_config['okno_dec_l'])
-				v.okno_inc_l = self.random_var(v.okno_inc_l, config2[coin1 + '-' + coin2]['okno_inc_min'], config2[coin1 + '-' + coin2]['okno_inc_max'], config2[coin1 + '-' + coin2]['okno_inc_decimals'], dif_initial_config['okno_inc_l'])
+					v.okno_dec_s = self.random_var(v.okno_dec_s, config2[coin1 + '-' + coin2]['okno_dec_min'], config2[coin1 + '-' + coin2]['okno_dec_max'], config2[coin1 + '-' + coin2]['okno_dec_decimals'], dif_initial_config['okno_dec_s'])
+					v.okno_inc_s = self.random_var(v.okno_inc_s, config2[coin1 + '-' + coin2]['okno_inc_min'], config2[coin1 + '-' + coin2]['okno_inc_max'], config2[coin1 + '-' + coin2]['okno_inc_decimals'], dif_initial_config['okno_inc_s'])
+					v.okno_dec_l = self.random_var(v.okno_dec_l, config2[coin1 + '-' + coin2]['okno_dec_min'], config2[coin1 + '-' + coin2]['okno_dec_max'], config2[coin1 + '-' + coin2]['okno_dec_decimals'], dif_initial_config['okno_dec_l'])
+					v.okno_inc_l = self.random_var(v.okno_inc_l, config2[coin1 + '-' + coin2]['okno_inc_min'], config2[coin1 + '-' + coin2]['okno_inc_max'], config2[coin1 + '-' + coin2]['okno_inc_decimals'], dif_initial_config['okno_inc_l'])
 
-				v.m_aprox_s = self.random_var(v.m_aprox_s, config2[coin1 + '-' + coin2]['m_aprox_min'], config2[coin1 + '-' + coin2]['m_aprox_max'], config2[coin1 + '-' + coin2]['m_aprox_decimals'], dif_initial_config['m_aprox_s'])
-				v.m_aprox_l = self.random_var(v.m_aprox_l, config2[coin1 + '-' + coin2]['m_aprox_min'], config2[coin1 + '-' + coin2]['m_aprox_max'], config2[coin1 + '-' + coin2]['m_aprox_decimals'], dif_initial_config['m_aprox_l'])
+					v.m_aprox_s = self.random_var(v.m_aprox_s, config2[coin1 + '-' + coin2]['m_aprox_min'], config2[coin1 + '-' + coin2]['m_aprox_max'], config2[coin1 + '-' + coin2]['m_aprox_decimals'], dif_initial_config['m_aprox_s'])
+					v.m_aprox_l = self.random_var(v.m_aprox_l, config2[coin1 + '-' + coin2]['m_aprox_min'], config2[coin1 + '-' + coin2]['m_aprox_max'], config2[coin1 + '-' + coin2]['m_aprox_decimals'], dif_initial_config['m_aprox_l'])
 
-				v.sl_s_dif = self.random_var(v.sl_s_dif, config2[coin1 + '-' + coin2]['sl_dif_min'], config2[coin1 + '-' + coin2]['sl_dif_max'], config2[coin1 + '-' + coin2]['sl_dif_decimals'], dif_initial_config['sl_s_dif'])
-				v.sl_l_dif = self.random_var(v.sl_l_dif, config2[coin1 + '-' + coin2]['sl_dif_min'], config2[coin1 + '-' + coin2]['sl_dif_max'], config2[coin1 + '-' + coin2]['sl_dif_decimals'], dif_initial_config['sl_l_dif'])
-
-				high_liquidation_risk = True
-				while (high_liquidation_risk):
-					aux_sl_initial_dif_s = v.sl_initial_dif_s
-					aux_high_leverage_s = v.high_leverage_s
-					aux_far_price_dif_s = v.far_price_dif_s
+					v.sl_s_dif = self.random_var(v.sl_s_dif, config2[coin1 + '-' + coin2]['sl_dif_min'], config2[coin1 + '-' + coin2]['sl_dif_max'], config2[coin1 + '-' + coin2]['sl_dif_decimals'], dif_initial_config['sl_s_dif'])
+					v.sl_l_dif = self.random_var(v.sl_l_dif, config2[coin1 + '-' + coin2]['sl_dif_min'], config2[coin1 + '-' + coin2]['sl_dif_max'], config2[coin1 + '-' + coin2]['sl_dif_decimals'], dif_initial_config['sl_l_dif'])
 
 					v.sl_initial_dif_s = self.random_var(v.sl_initial_dif_s, config2[coin1 + '-' + coin2]['sl_initial_dif_min'], config2[coin1 + '-' + coin2]['sl_initial_dif_max'], config2[coin1 + '-' + coin2]['sl_initial_dif_decimals'], dif_initial_config['sl_initial_dif_s'])
 					v.high_leverage_s = int(self.random_var(v.high_leverage_s, config2[coin1 + '-' + coin2]['high_leverage_min'], config2[coin1 + '-' + coin2]['high_leverage_max'], config2[coin1 + '-' + coin2]['high_leverage_decimals'], dif_initial_config['high_leverage_s']))
 					v.far_price_dif_s = self.random_var(v.far_price_dif_s, config2[coin1 + '-' + coin2]['far_price_dif_min'], config2[coin1 + '-' + coin2]['far_price_dif_max'], config2[coin1 + '-' + coin2]['far_price_dif_decimals'], dif_initial_config['far_price_dif_s'])
+				else:
+					v.far_price_dif_l = self.prev_far_price_dif_l
+					v.far_price_dif_s = self.prev_far_price_dif_s
+					print('Se utilizaran los \'far_price_dif\' anteriores')
+					self.prev_far_price_dif_l = None
+					self.prev_far_price_dif_s = None
 
-					if (((v.sl_initial_dif_s + v.far_price_dif_s + self.config[coin1 + '-' + coin2]['min_fee']) * v.high_leverage_s) <= 0.9):
-						high_liquidation_risk = False
-					else:
-						v.sl_initial_dif_s = aux_sl_initial_dif_s
-						v.high_leverage_s = aux_high_leverage_s
-						v.far_price_dif_s = aux_far_price_dif_s
-
-				high_liquidation_risk = True
-				while (high_liquidation_risk):
-					aux_sl_initial_dif_l = v.sl_initial_dif_l
-					aux_high_leverage_l = v.high_leverage_l
-					aux_far_price_dif_l = v.far_price_dif_l
-
-					v.sl_initial_dif_l = self.random_var(v.sl_initial_dif_l, config2[coin1 + '-' + coin2]['sl_initial_dif_min'], config2[coin1 + '-' + coin2]['sl_initial_dif_max'], config2[coin1 + '-' + coin2]['sl_initial_dif_decimals'], dif_initial_config['sl_initial_dif_l'])
-					v.high_leverage_l = int(self.random_var(v.high_leverage_l, config2[coin1 + '-' + coin2]['high_leverage_min'], config2[coin1 + '-' + coin2]['high_leverage_max'], config2[coin1 + '-' + coin2]['high_leverage_decimals'], dif_initial_config['high_leverage_l']))
-					v.far_price_dif_l = self.random_var(v.far_price_dif_l, config2[coin1 + '-' + coin2]['far_price_dif_min'], config2[coin1 + '-' + coin2]['far_price_dif_max'], config2[coin1 + '-' + coin2]['far_price_dif_decimals'], dif_initial_config['far_price_dif_l'])
-
-					if (((v.sl_initial_dif_l + v.far_price_dif_l + self.config[coin1 + '-' + coin2]['min_fee']) * v.high_leverage_l) <= 0.9):
-						high_liquidation_risk = False
-					else:
-						v.sl_initial_dif_l = aux_sl_initial_dif_l
-						v.high_leverage_l = aux_high_leverage_l
-						v.far_price_dif_l = aux_far_price_dif_l
+				v.sl_initial_dif_l = self.random_var(v.sl_initial_dif_l, config2[coin1 + '-' + coin2]['sl_initial_dif_min'], config2[coin1 + '-' + coin2]['sl_initial_dif_max'], config2[coin1 + '-' + coin2]['sl_initial_dif_decimals'], dif_initial_config['sl_initial_dif_l'])
+				v.high_leverage_l = int(self.random_var(v.high_leverage_l, config2[coin1 + '-' + coin2]['high_leverage_min'], config2[coin1 + '-' + coin2]['high_leverage_max'], config2[coin1 + '-' + coin2]['high_leverage_decimals'], dif_initial_config['high_leverage_l']))
+				v.far_price_dif_l = self.random_var(v.far_price_dif_l, config2[coin1 + '-' + coin2]['far_price_dif_min'], config2[coin1 + '-' + coin2]['far_price_dif_max'], config2[coin1 + '-' + coin2]['far_price_dif_decimals'], dif_initial_config['far_price_dif_l'])
 
 				v.leverage_inc_s = self.random_var(v.leverage_inc_s, config2[coin1 + '-' + coin2]['leverage_inc_min'], config2[coin1 + '-' + coin2]['leverage_inc_max'], config2[coin1 + '-' + coin2]['leverage_inc_decimals'], dif_initial_config['leverage_inc_s'])
 				v.leverage_dec_s = self.random_var(v.leverage_dec_s, config2[coin1 + '-' + coin2]['leverage_dec_min'], config2[coin1 + '-' + coin2]['leverage_dec_max'], config2[coin1 + '-' + coin2]['leverage_dec_decimals'], dif_initial_config['leverage_dec_s'])
@@ -275,55 +344,56 @@ class Db(object):
 
 				v.change_initial_config()
 
-				list_ok = False
-				while (not list_ok):
-					list_ok = True
-					f = open(f'strategies/backtesting/{timer}/{coin1}-{coin2}/list.txt', 'r')
-					lst = f.read().strip().split('\n')
+				lst = []
+				for c in clients:
+					path = f'strategies/backtesting/{timer}/{coin1}-{coin2}/clients_list/{c}_list.txt'
+					f = open(path, 'r')
+					lst.extend(f.read().strip().split('\n'))
 					f.close()
-					if (not lst):
-						list_ok = False
-					for row in lst:
-						if (row):
-							st = None
-							try:
-								st = json.JSONDecoder().decode(row)
-							except:
-								list_ok = False
-								time.sleep(1)
-							if (st):
-								if (st['initial_config'] == v.initial_config):
-									st_in_files = True
-								if (st['ready_to_use']):
-									s = st
-					if (btst and (not s)):
-						list_ok = False
-		# Busca la última estrategia ready_to_use y con mayor pl, para comparar con la estrategia nueva.
-		if (btst):
-			prev_comp_initial_config = s['comp_initial_config']
-			if (btst['initial_config'] != s['initial_config']):
-				# Ver si esa estrategia es mejor que la anterior.
-				if (btst['comp_pl'] >= btst['comp_prev_pl']): # 0.0 0.0 (cuando es la estrategia original)
-					v.comp_initial_config = btst['initial_config']
-					v.comp_last_timestamp = btst['last_timestamp']
-					v.comp_prev_pl = btst['pl']
-				else:
-					v.comp_initial_config = prev_comp_initial_config
-					v.comp_last_timestamp = s['comp_last_timestamp']
-					v.comp_prev_pl = s['comp_prev_pl']
-			else: # No había otras estrategias.
-				v.comp_initial_config = s['initial_config']
-				v.comp_last_timestamp = s['last_timestamp']
-				v.comp_prev_pl = s['pl']
-		if (v.comp_initial_config and (v.comp_initial_config != '{}')):
-			ok = False
-			for l in rows:
-				if (l['initial_config'] == v.comp_initial_config):
-					ok = True
-			if (not ok):
-				v.set_config(v.comp_initial_config)
+
+				for row in lst:
+					if (row):
+						st = None
+						try:
+							st = json.JSONDecoder().decode(row)
+						except:
+							0
+						if (st):
+							if (st['initial_config'] == v.initial_config):
+								st_in_files = True
+							if (st['ready_to_use']):
+								s = st
+
+			# Busca la última estrategia ready_to_use y con mayor pl, para comparar con la estrategia nueva.
+			if (btst and s):
+				prev_comp_initial_config = s['comp_initial_config']
+				if (btst['initial_config'] != s['initial_config']):
+					# Ver si esa estrategia es mejor que la anterior.
+					if (btst['comp_pl'] >= btst['comp_prev_pl']): # 0.0 0.0 (cuando es la estrategia original)
+						v.comp_initial_config = btst['initial_config']
+						v.comp_last_timestamp = btst['last_timestamp']
+						v.comp_prev_pl = btst['pl']
+					else:
+						v.comp_initial_config = prev_comp_initial_config
+						v.comp_last_timestamp = s['comp_last_timestamp']
+						v.comp_prev_pl = s['comp_prev_pl']
+				else: # No había otras estrategias.
+					v.comp_initial_config = s['initial_config']
+					v.comp_last_timestamp = s['last_timestamp']
+					v.comp_prev_pl = s['pl']
+			if (v.comp_initial_config and (v.comp_initial_config != '{}')):
+				ok = False
+				for l in rows:
+					if (l['initial_config'] == v.comp_initial_config):
+						ok = True
+				if (not ok):
+					v.set_config(v.comp_initial_config)
+			if (btst and (not r_or_d)):
+				v.set_config(btst['initial_config'])
 		print(datetime.now().isoformat())
 		print('Se usará una estrategia con: ' + json.JSONEncoder().encode(v.initial_config))
+		if (retest_btst):
+			print('retest_btst')
 		return v
 
 
@@ -415,25 +485,55 @@ class Db(object):
 			t = 'backtesting'
 			if (real_time_initial_config == new_initial_config):
 				t = 'real_time'
-			f = open(f'traders/{t}/{timer}/{coin1}-{coin2}/list.txt', 'r')
-			lst = f.read().strip().split('\n')
-			f.close()
-			rows = []
-			if (lst and lst[0]):
-				for row in lst:
-					tr = json.JSONDecoder().decode(row)
-					if (tr['initial_config'] == new_initial_config):
-						rows.append(tr)
-			else: # Cargar desde backtesting porque no se encontró el trader en real_time
-				t = 'backtesting'
+
+			clients = []
+			path = f'strategies/backtesting/{timer}/{coin1}-{coin2}/clients_list/clients_list.txt'
+			try:
+				f = open(path, 'r')
+				clients = f.read().strip().split('\n')
+				f.close()
+			except:
+				0
+
+			lst = []
+			for c in clients:
+				path = f'strategies/backtesting/{timer}/{coin1}-{coin2}/clients_list/{c}_list.txt'
+				f = open(path, 'r')
+				lst.extend(f.read().strip().split('\n'))
+				f.close()
+
+			lst = None
+			if (t == 'real_time'):
 				f = open(f'traders/{t}/{timer}/{coin1}-{coin2}/list.txt', 'r')
 				lst = f.read().strip().split('\n')
 				f.close()
+			rows = []
+			if (lst and lst[0]):
+				for row in lst:
+					tr = None
+					try:
+						tr = json.JSONDecoder().decode(row)
+					except:
+						0
+					if (tr and (tr['initial_config'] == new_initial_config)):
+						rows.append(tr)
+			else: # Cargar desde backtesting porque no se encontró el trader en real_time
+				t = 'backtesting'
+				lst = []
+				for c in clients:
+					path = f'traders/{t}/{timer}/{coin1}-{coin2}/clients_list/{c}_list.txt'
+					f = open(path, 'r')
+					lst.extend(f.read().strip().split('\n'))
+					f.close()
 				rows = []
 				if (lst and lst[0]):
 					for row in lst:
-						tr = json.JSONDecoder().decode(row)
-						if (tr['initial_config'] == new_initial_config):
+						tr = None
+						try:
+							tr = json.JSONDecoder().decode(row)
+						except:
+							0
+						if (tr and (tr['initial_config'] == new_initial_config)):
 							rows.append(tr)
 			if (((real_time_initial_config != new_initial_config) or (not m)) and rows):
 				m = rows[-1]
@@ -447,7 +547,7 @@ class Db(object):
 
 
 	def save_trader(self, st):
-		f = open(f"traders/backtesting/{st['timer']}/{st['coin1']}-{st['coin2']}/list.txt", 'a')
+		f = open(f"traders/backtesting/{st['timer']}/{st['coin1']}-{st['coin2']}/clients_list/{self.client_name}_list.txt", 'a')
 		f.write(json.JSONEncoder().encode(st) + '\n')
 		f.close()
 
@@ -457,16 +557,19 @@ class Db(object):
 			st = {'mode' : mode, 'timer' : m.timer, 'coin1' : m.coin1, 'coin2' : m.coin2, 'p_s_u' : m.p_s_u, 'p_c_u' : m.p_c_u, 'p_s_d' : m.p_s_d, 'p_c_d' : m.p_c_d, 'e_p_u' : m.e_p_u, 'e_p_d' : m.e_p_d, 'initial_config' : m.initial_config, 'last_timestamp' : m.last_timestamp}
 		else:
 			st = json.JSONDecoder().decode(st)
+		t = f"clients_list/{self.client_name}_"
+		if (st['mode'] == 'real_time'):
+			t = ''
 		strategies_ok = False
 		while (not strategies_ok):
 			strategies_ok = True
 			txt = ''
 			try:
-				f = open(f"traders/{st['mode']}/{st['timer']}/{st['coin1']}-{st['coin2']}/list.txt", 'r')
+				f = open(f"traders/{st['mode']}/{st['timer']}/{st['coin1']}-{st['coin2']}/{t}list.txt", 'r')
 			except:
-				f = open(f"traders/{st['mode']}/{st['timer']}/{st['coin1']}-{st['coin2']}/list.txt", 'w')
+				f = open(f"traders/{st['mode']}/{st['timer']}/{st['coin1']}-{st['coin2']}/{t}list.txt", 'w')
 				f.close()
-				f = open(f"traders/{st['mode']}/{st['timer']}/{st['coin1']}-{st['coin2']}/list.txt", 'r')
+				f = open(f"traders/{st['mode']}/{st['timer']}/{st['coin1']}-{st['coin2']}/{t}list.txt", 'r')
 			lst = f.read().strip().split('\n')
 			f.close()
 			for row in lst:
@@ -484,7 +587,7 @@ class Db(object):
 							txt += json.JSONEncoder().encode(st) + '\n'
 			if (not txt):
 				txt = json.JSONEncoder().encode(st)
-		f = open(f"traders/{st['mode']}/{st['timer']}/{st['coin1']}-{st['coin2']}/list.txt", 'w')
+		f = open(f"traders/{st['mode']}/{st['timer']}/{st['coin1']}-{st['coin2']}/{t}list.txt", 'w')
 		f.write(txt)
 		f.close()
 
@@ -494,7 +597,7 @@ class Db(object):
 			st = json.JSONDecoder().decode(st)
 			st['ready_to_use'] = False
 			print('Guardando estrategia ...')
-			f = open(f"strategies/{st['mode']}/{st['timer']}/{st['coin1']}-{st['coin2']}/list.txt", 'a')
+			f = open(f"strategies/{st['mode']}/{st['timer']}/{st['coin1']}-{st['coin2']}/clients_list/{self.client_name}_list.txt", 'a')
 			f.write(json.JSONEncoder().encode(st) + '\n')
 			f.close()
 		else:#Guardando desde real_time
@@ -511,84 +614,142 @@ class Db(object):
 
 
 	def update_strategy(self, v, mode = 'backtesting', st = None, timer = None, coin1 = None, coin2 = None, update_comp = True):
+		retest_btst = False
 		if (mode == 'backtesting'):
+			best = None
 			st = json.JSONDecoder().decode(st)
+			comp = None
+			# Busca la mejor estrategia para usarla como 'comp'.
+			f = open(f'strategies/backtesting/{timer}/{coin1}-{coin2}/best_update.txt', 'r')
+			best = None
+			try:
+				best = json.JSONDecoder().decode(f.read().strip().split('\n')[-1])
+			except:
+				0
+			f.close()
+			if (update_comp):
+				if (best):
+					comp = {'comp_initial_config' : best['initial_config'], 'comp_last_timestamp' : float(best['last_timestamp']), 'comp_prev_pl' : best['pl']}
+				return comp
+			else:
+				if (best and st['ready_to_use'] and (st['initial_config'] == best['initial_config'])):
+					f = open(f'strategies/backtesting/{timer}/{coin1}-{coin2}/best_update.txt', 'w')
+					f.write(json.JSONEncoder().encode(st))
+					f.close()
+					retest_btst = True
+
+			st_failed = False
+			if (st['ready_to_use']):
+				if ((st['comp_pl'] >= st['comp_prev_pl']) or retest_btst):
+					path = f'strategies/backtesting/{timer}/{coin1}-{coin2}/clients_list/clients_list.txt'
+					f = open(path, 'r')
+					clients = f.read().strip().split('\n')
+					f.close()
+
+					f = open(f'strategies/backtesting/{timer}/{coin1}-{coin2}/best_update.txt', 'w')
+					f.write(json.JSONEncoder().encode(st))
+					f.close()
+					print('Borrando estrategias anteriores.')
+					txt = ''
+					for c in clients:
+						txt = ''
+						f = open(f'strategies/backtesting/{timer}/{coin1}-{coin2}/clients_list/{c}_list.txt', 'r')
+						lst = f.read().strip().split('\n')
+						f.close()
+						for row in lst:
+							l = None
+							try:
+								l = json.JSONDecoder().decode(row)
+							except:
+								0
+							if (l):
+								if ((st['comp_pl'] == st['comp_prev_pl']) and (l['initial_config'] == st['comp_initial_config'])):
+									best = -1
+									best_prev = -1
+									for d in l['derivatives']:
+										if ((d['coin2_balance'] - d['total_investment']) > best_prev):
+											best_prev = (d['coin2_balance'] - d['total_investment'])
+									for d in st['derivatives']:
+										if ((d['coin2_balance'] - d['total_investment']) > best):
+											best = (d['coin2_balance'] - d['total_investment'])
+									if (best_prev >= best):
+										self.prev_far_price_dif_l = st['comp_initial_config']['far_price_dif_l']
+										self.prev_far_price_dif_s = st['comp_initial_config']['far_price_dif_s']
+								if (
+									(l['initial_config'] == st['initial_config']) or 
+									(l['initial_config'] == st['comp_initial_config']) or 
+									(l['comp_initial_config'] == st['initial_config']) or 
+									((not l['ready_to_use']) and (l['comp_last_timestamp'] >= st['last_timestamp']))
+								):
+									txt += json.JSONEncoder().encode(l) + '\n'
+						f = open(f'strategies/backtesting/{timer}/{coin1}-{coin2}/clients_list/{c}_list.txt', 'w')
+						f.write(txt)
+						f.close()
+						f = open(f'traders/backtesting/{timer}/{coin1}-{coin2}/clients_list/{c}_list.txt', 'r')
+						lst = f.read().strip().split('\n')
+						f.close()
+						for row in lst:
+							tr = None
+							try:
+								tr = json.JSONDecoder().decode(row)
+							except:
+								0
+							if (tr and (tr['initial_config'] == st['initial_config'])):
+								f = open(f'traders/backtesting/{timer}/{coin1}-{coin2}/clients_list/{c}_list.txt', 'w')
+								f.write(json.JSONEncoder().encode(tr) + '\n')
+								f.close()
+				else:
+					if (not retest_btst):
+						st_failed = True
+				self.prom_st = st['initial_config'].copy()
+				self.prom_st.pop('type')
+				self.prom_st.pop('far_price_dif_s')
+				self.prom_st.pop('far_price_dif_l')
 			strategies_ok = False
 			while (not strategies_ok):
-				strategies_ok = True
-				new_initial_config = ''
-				if (update_comp):
-					comp = None
-					# Busca la mejor estrategia para usarla como 'comp'.
-					f = open(f'strategies/backtesting/{timer}/{coin1}-{coin2}/best_update.txt', 'r')
-					best = None
-					try:
-						best = json.JSONDecoder().decode(f.read().strip().split('\n')[-1])
-					except:
-						strategies_ok = False
-						time.sleep(1)
+				path = f'strategies/backtesting/{timer}/{coin1}-{coin2}/clients_list/clients_list.txt'
+				clients = []
+				try:
+					f = open(path, 'r')
+					clients = f.read().strip().split('\n')
 					f.close()
-					if (best):
-						comp = {'comp_initial_config' : best['initial_config'], 'comp_last_timestamp' : float(best['last_timestamp']), 'comp_prev_pl' : best['pl']}
-					return comp
-			if ((not new_initial_config) and (st['ready_to_use']) and (st['comp_pl'] >= st['comp_prev_pl'])):
-				f = open(f'strategies/backtesting/{timer}/{coin1}-{coin2}/best_update.txt', 'w')
-				f.write(json.JSONEncoder().encode(st))
-				f.close()
-				print('Borrando estrategias anteriores.')
-				strategies_ok = False
-				txt = ''
-				while (not strategies_ok):
-					strategies_ok = True
+				except:
+					0
+				for k in list(self.prom_st.keys()):
+					self.prom_st[k] = {'dec' : [0,0,0], 'eq' : [0,0,0], 'inc' : [0,0,0]}
+				for c in clients:
 					txt = ''
-					f = open(f'strategies/backtesting/{timer}/{coin1}-{coin2}/list.txt', 'r')
+					f = open(f'strategies/backtesting/{timer}/{coin1}-{coin2}/clients_list/{c}_list.txt', 'r')
 					lst = f.read().strip().split('\n')
 					f.close()
 					for row in lst:
-						l = None
-						try:
-							l = json.JSONDecoder().decode(row)
-						except:
-							strategies_ok = False
-							time.sleep(1)
-						if (l):
-							if ((l['initial_config'] == st['initial_config']) or (l['initial_config'] == st['comp_initial_config']) or (l['comp_initial_config'] == st['initial_config']) or (not l['ready_to_use'])):
-								txt += json.JSONEncoder().encode(l) + '\n'
-				f = open(f'strategies/backtesting/{timer}/{coin1}-{coin2}/list.txt', 'w')
-				f.write(txt)
-				f.close()
-				f = open(f'traders/backtesting/{timer}/{coin1}-{coin2}/list.txt', 'r')
-				lst = f.read().strip().split('\n')
-				f.close()
-				for row in lst:
-					tr = json.JSONDecoder().decode(row)
-					if (tr['initial_config'] == st['initial_config']):
-						f = open(f'traders/backtesting/{timer}/{coin1}-{coin2}/list.txt', 'w')
-						f.write(json.JSONEncoder().encode(tr) + '\n')
-						f.close()
-			strategies_ok = False
-			while (not strategies_ok):
-				strategies_ok = True
-				txt = ''
-				f = open(f'strategies/backtesting/{timer}/{coin1}-{coin2}/list.txt', 'r')
-				lst = f.read().strip().split('\n')
-				f.close()
-				for row in lst:
-					if (row):
-						s = None
-						try:
-							s = json.JSONDecoder().decode(row)
-						except:
-							strategies_ok = False
-							time.sleep(1)
-						if (s):
-							if (s['initial_config'] != st['initial_config']):
-								txt += row + '\n'
-							else:
-								txt += json.JSONEncoder().encode(st) + '\n'
-				f = open(f'strategies/backtesting/{timer}/{coin1}-{coin2}/list.txt', 'w')
-				f.write(txt)
-				f.close()
+						if (row):
+							s = None
+							try:
+								s = json.JSONDecoder().decode(row)
+								strategies_ok = True
+							except:
+								0
+							if (s):
+								if (s['initial_config'] != st['initial_config']):
+									if (st_failed):
+										if (s['comp_initial_config'] == st['comp_initial_config']):
+											for k in list(self.prom_st.keys()):
+												side = 'eq'
+												if (s['initial_config'][k] > st['comp_initial_config'][k]):
+													side = 'inc'
+												if (s['initial_config'][k] < st['comp_initial_config'][k]):
+													side = 'dec'
+												self.prom_st[k][side][0] += s['initial_config'][k]
+												self.prom_st[k][side][1] += 1
+												self.prom_st[k][side][2] += s['comp_pl']
+									txt += row + '\n'
+					txt += json.JSONEncoder().encode(st) + '\n'
+					f = open(f'strategies/backtesting/{timer}/{coin1}-{coin2}/clients_list/{c}_list.txt', 'w')
+					f.write(txt)
+					f.close()
+				if (not strategies_ok):
+					time.sleep(1)
 		else:
 			statement = {'mode' : mode, 'name' : v.NAME, 'timer' : v.timer, 'coin1' : v.coin1, 'coin2' : v.coin2, 'derivatives' : v.derivatives, 'initial_config' : v.initial_config, 'stop_loss' : v.stop_loss, 'trade_type' : v.trade['type'], 'trade_timestamp' : v.trade['time'], 'trade_price' : v.trade['price'], 'trade_prev_price' : v.trade['prev_price'], 'trade_prev_timestamp' : float(v.trade['prev_time']), 'last_timestamp' : v.last_timestamp, 'pl' : v.pl, 'leverage_s' : v.leverage_s, 'leverage_l' : v.leverage_l, 'l_l_ok' : v.l_l_ok, 'l_s_ok' : v.l_s_ok, 'l_l_no' : v.l_l_no, 'l_s_no' : v.l_s_no, 'zoom_s' : v.zoom_s, 'zoom_l' : v.zoom_l, 'far_price' : v.far_price}
 			try:
