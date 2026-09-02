@@ -166,5 +166,5 @@
             {"position" : "close", "coin2_balance" : 1, "leverage" : 1, "wait_zoom" : false, "wait_far_price_dif" : true, "far_price_dif_s" : null, "far_price_dif_l" : null, "total_investment" : 1, "open_price" : null, "close_on_close" : true},
             {"position" : "close", "coin2_balance" : 1, "leverage" : 1, "wait_zoom" : false, "wait_far_price_dif" : false, "total_investment" : 1, "open_price" : null, "close_on_close" : false}
         ]
-	},
+	}
 }
