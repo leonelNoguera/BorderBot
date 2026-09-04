@@ -87,7 +87,7 @@
         ]
 	},
 	"JUP-USDT" : {
-		"id" : "",
+		"id" : "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",
 		"decimals" : 14,
 		"first_timestamp" : 1732313730, "dif_tolerance" : 0.07, "last_dif_timestamp" : 1776344211,
 		"retest_btst_time" : 3600,
